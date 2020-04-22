@@ -40,10 +40,13 @@ int main() {
     }
 
     // Main loop of Held-Karp: compute all subproblems via bottom-up DP
+    // Outer loop cannot be parallelized because larger subproblems depend on smaller ones
     for (int p = 2; p < n; p++) {
         unsigned int S = (1 << p) - 1;
         int limit = 1 << n;
         // For all S a subset of {1, 2, ..., n - 1} such that |S| = p
+        // To turn into a for loop, need to know number of subsets for each size p
+        // Can do this by precomputing Pascal's triangle
         while (S < limit) {
             if (!(S & 1)) {
                 // For all k in S
