@@ -12,7 +12,7 @@ To add an instance, simply create a file with the following two contents:
 in that order. So the file should only have 1 + n^2 space-separated numbers. Note that the edge weights must obey the triangle inequality (metric TSP). Add the instance to the `instances` directory.
 
 
-## Current TSP Instances
+## Current TSP instances
  Instance      | n  | symmetric | opt   
  :--- |:--- |:--- |:---
  br17 | 17 | no | 39
