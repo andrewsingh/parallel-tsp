@@ -1,14 +1,19 @@
-/*  Held-Karp Algorithm for the Metric TSP Problem 
+/*  Sequential Held-Karp Algorithm for the Metric TSP Problem 
     Input: the number of cities n followed by the full matrix of distances.
     Output: The cost of the optimal tour.
 */
 #include <iostream>
-#include <vector>
+#include <iomanip>
+#include <stdlib.h>
 #include <limits.h>
+#include <time.h>
 using namespace std;
 
 
 int main() {
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
     // n = number of nodes
     int n;
     cin >> n;
@@ -40,13 +45,10 @@ int main() {
     }
 
     // Main loop of Held-Karp: compute all subproblems via bottom-up DP
-    // Outer loop cannot be parallelized because larger subproblems depend on smaller ones
     for (int p = 2; p < n; p++) {
         unsigned int S = (1 << p) - 1;
         int limit = 1 << n;
         // For all S a subset of {1, 2, ..., n - 1} such that |S| = p
-        // To turn into a for loop, need to know number of subsets for each size p
-        // Can do this by precomputing Pascal's triangle
         while (S < limit) {
             if (!(S & 1)) {
                 // For all k in S
@@ -84,12 +86,18 @@ int main() {
     }
 
     // Output optimal cost
-    cout << opt_cost << endl;
+    cout << "Tour cost = " << opt_cost << endl;
     
     // Free memory and return
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
     free(C);
+
+    clock_gettime(CLOCK_REALTIME, &end);
+    double exec_time;
+    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
+    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }
