@@ -8,6 +8,36 @@
 using namespace std;
 
 
+
+// Return last row of Pascal's triangle
+int *pascals_triangle(int n) {
+    int **T = (int**)malloc(n * sizeof(int*));
+    for (int i = 0; i < n; i++) {
+        T[i] = (int*)malloc(n * sizeof(int));
+    }
+    T[0][0] = 1;
+    for (int i = 1; i < n; i++) {
+        T[i][0] = 1;
+        // cout << T[i][0] << " ";
+        for (int j = 1; j < i; j++) {
+            T[i][j] = T[i - 1][j - 1] + T[i - 1][j];
+            // cout << T[i][j] << " ";
+        }
+        T[i][i] = 1;
+        // cout << T[i][i] << " ";
+        // cout << endl;
+    }
+    int *T_last = T[n - 1];
+    for (int i = 0; i < n - 1; i++) {
+        free(T[i]);
+    }
+    free(T);
+    return T_last;
+}
+
+
+
+
 int main() {
     // n = number of nodes
     int n;
@@ -34,6 +64,10 @@ int main() {
         C[i] = (int*)malloc(n * sizeof(int));
     }
 
+    // Precompute last row of Pascal's triangle for values of n choose p
+    // in order to statically parallelize for loop in main computation
+    int *T = pascals_triangle(n + 1);
+
     // First step of Held-Karp: compute base cases
     for (int k = 1; k < n; k++) {
         C[1 << k][k] = G[0][k];
@@ -45,9 +79,8 @@ int main() {
         unsigned int S = (1 << p) - 1;
         int limit = 1 << n;
         // For all S a subset of {1, 2, ..., n - 1} such that |S| = p
-        // To turn into a for loop, need to know number of subsets for each size p
-        // Can do this by precomputing Pascal's triangle
-        while (S < limit) {
+        // This loop can be parallelized
+        for (int i = 0; i < T[p]; i++) {
             if (!(S & 1)) {
                 // For all k in S
                 for (unsigned int k = 0; k < n; k++) {
@@ -87,6 +120,7 @@ int main() {
     cout << opt_cost << endl;
     
     // Free memory and return
+    free(T);
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
