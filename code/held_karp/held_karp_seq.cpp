@@ -3,14 +3,17 @@
     Output: The cost of the optimal tour.
 */
 #include <iostream>
-#include <vector>
+#include <iomanip>
+#include <stdlib.h>
 #include <limits.h>
-#include <ctime>
+#include <time.h>
 using namespace std;
 
 
 int main() {
-    clock_t exec_time = clock();
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
     // n = number of nodes
     int n;
     cin >> n;
@@ -83,7 +86,7 @@ int main() {
     }
 
     // Output optimal cost
-    cout << opt_cost << endl;
+    cout << "Tour cost = " << opt_cost << endl;
     
     // Free memory and return
     for (int i = 0; i < (1 << n); i++) {
@@ -91,7 +94,10 @@ int main() {
     }
     free(C);
 
-    exec_time = clock() - exec_time;
-    cout << "Execution time: " << ((float)exec_time) / CLOCKS_PER_SEC << " seconds" << endl;
+    clock_gettime(CLOCK_REALTIME, &end);
+    double exec_time;
+    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
+    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }

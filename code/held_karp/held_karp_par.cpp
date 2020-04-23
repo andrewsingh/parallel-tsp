@@ -1,15 +1,19 @@
-/*  Parallel Held-Karp Algorithm for the Metric TSP Problem 
+/*  Parallel Held-Karp Algorithm for the Metric TSP Problem
     Input: the number of cities n followed by the full matrix of distances.
     Output: The cost of the optimal tour.
 */
 #include <iostream>
+#include <stdlib.h>
 #include <limits.h>
-#include <ctime>
+#include <omp.h>
 using namespace std;
 
 
 
-// Return last row of Pascal's triangle
+/*  Return last row of Pascal's triangle
+    This function takes on the order of 1e-6 seconds so no point
+    trying to optimize it any further 
+*/
 int *pascals_triangle(int n) {
     int **T = (int**)malloc(n * sizeof(int*));
     for (int i = 0; i < n; i++) {
@@ -33,7 +37,12 @@ int *pascals_triangle(int n) {
 
 
 int main() {
-    clock_t exec_time = clock();
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
+    int num_threads = omp_get_max_threads();
+    omp_set_num_threads(num_threads);
+    cout << "Running with " << num_threads << " threads" << endl;
     // n = number of nodes
     int n;
     cin >> n;
@@ -59,11 +68,9 @@ int main() {
         C[i] = (int*)malloc(n * sizeof(int));
     }
 
-
-    // Precompute last row of Pascal's triangle for values of n choose p
-    // in order to statically parallelize for loop in main computation
+    /*  Precompute last row of Pascal's triangle for values of n choose p
+        in order to statically parallelize for loop in main computation */
     int *T = pascals_triangle(n + 1);
-
 
     // Allocate array to store sets (removes sequential dependency on S in for loop)
     unsigned int **sets = (unsigned int **)malloc(n * sizeof(unsigned int*));
@@ -73,7 +80,9 @@ int main() {
     free(sets[0]);
     free(sets[1]);
 
-    // Fill sets array
+    /*  Fill sets array, dynamic scheduling because number of sets for
+        each size p can vary widely (Pascal's triangle) */
+    #pragma omp parallel for schedule(dynamic)
     for (int p = 2; p < n; p++) {
         unsigned int S = (1 << p) - 1;
         int limit = 1 << n;
@@ -94,11 +103,13 @@ int main() {
         C[1 << k][k] = G[0][k];
     }
 
-    // Main loop of Held-Karp: compute all subproblems via bottom-up DP
-    // Outer loop cannot be parallelized because larger subproblems depend on smaller ones
+    /*  Main loop of Held-Karp: compute all subproblems via bottom-up DP
+        Outer-most loop cannot be parallelized because larger subproblems 
+        depend on smaller ones */
     for (int p = 2; p < n; p++) {
-        // For all S a subset of {1, 2, ..., n - 1} such that |S| = p
-        // This loop can now be parallelized
+        /*  For all S a subset of {1, 2, ..., n - 1} such that |S| = p
+            This is the loop to target for parallelism */
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < T[p]; i++) {
             unsigned int S = sets[p][i];
             if (!(S & 1)) {
@@ -131,12 +142,12 @@ int main() {
         int tour_cost = C[S_tour][k] + G[k][0];
         if (tour_cost < opt_cost) {
             opt_cost = tour_cost;
-        }    
+        }
     }
 
     // Output optimal cost
-    cout << opt_cost << endl;
-    
+    cout << "Tour cost = " << opt_cost << endl;
+
     // Free memory and return
     free(T);
     for (int i = 0; i < n; i++) {
@@ -148,7 +159,10 @@ int main() {
     }
     free(C);
 
-    exec_time = clock() - exec_time;
-    cout << "Execution time: " << ((float)exec_time) / CLOCKS_PER_SEC << " seconds" << endl;
+    clock_gettime(CLOCK_REALTIME, &end);
+    double exec_time;
+    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
+    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }
