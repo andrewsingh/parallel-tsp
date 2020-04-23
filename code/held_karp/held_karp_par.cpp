@@ -12,7 +12,7 @@ using namespace std;
 
 /*  Return last row of Pascal's triangle
     This function takes on the order of 1e-6 seconds so no point
-    trying to optimize it any further 
+    trying to optimize it any further
 */
 int *pascals_triangle(int n) {
     int **T = (int**)malloc(n * sizeof(int*));
@@ -36,13 +36,21 @@ int *pascals_triangle(int n) {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    int num_threads = omp_get_max_threads();
+    // Check if thread count is passed in as a command line argument
+    for (int i = 0; i < argc; i++) {
+        string arg(argv[i]);
+        if (arg == "-t" && i + 1 < argc) {
+            num_threads = atoi(argv[i + 1]);
+        }
+    }
+    omp_set_num_threads(num_threads);
+    cout << "Running with " << num_threads << " threads" << endl;
+
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
 
-    int num_threads = omp_get_max_threads();
-    omp_set_num_threads(num_threads);
-    cout << "Running with " << num_threads << " threads" << endl;
     // n = number of nodes
     int n;
     cin >> n;
@@ -73,11 +81,9 @@ int main() {
 
     // Allocate array to store sets (removes sequential dependency on S in for loop)
     unsigned int **sets = (unsigned int **)malloc(n * sizeof(unsigned int*));
-    for (int p = 0; p < n; p++) {
+    for (int p = 2; p < n; p++) {
         sets[p] = (unsigned int *)malloc(T[p] * sizeof(unsigned int));
     }
-    free(sets[0]);
-    free(sets[1]);
 
     /*  Fill sets array, dynamic scheduling because number of sets for
         each size p can vary widely (Pascal's triangle) */
@@ -95,7 +101,6 @@ int main() {
             S = (((r ^ S) >> 2) / c) | r;
         }
     }
-
 
     // First step of Held-Karp: compute base cases
     for (int k = 1; k < n; k++) {
