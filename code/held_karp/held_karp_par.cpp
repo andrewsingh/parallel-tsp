@@ -4,7 +4,7 @@
 */
 #include <iostream>
 #include <stdlib.h>
-#include <limits.h>
+#include <float.h>
 #include <omp.h>
 using namespace std;
 
@@ -48,24 +48,23 @@ int main() {
     cin >> n;
 
     // Allocate weights matrix
-    int **G = (int**)malloc(n * sizeof(int*));
+    float **G = (float**)malloc(n * sizeof(float*));
     for (int i = 0; i < n; i++) {
-        G[i] = (int*)malloc(n * sizeof(int));
+        G[i] = (float*)malloc(n * sizeof(float));
     }
 
     // Read in weights matrix
-    int dist;
+    float dist;
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            cin >> dist;
-            G[i][j] = dist;
+            cin >> G[i][j];
         }
     }
 
     // Allocate DP array
-    int **C = (int**)malloc((1 << n) * sizeof(int*));
+    float **C = (float**)malloc((1 << n) * sizeof(float*));
     for (int i = 0; i < (1 << n); i++) {
-        C[i] = (int*)malloc(n * sizeof(int));
+        C[i] = (float*)malloc(n * sizeof(float));
     }
 
     /*  Precompute last row of Pascal's triangle for values of n choose p
@@ -116,11 +115,11 @@ int main() {
                 // For all k in S
                 for (unsigned int k = 0; k < n; k++) {
                     if (S & (1 << k)) {
-                        int min_cost = INT_MAX;
+                        float min_cost = FLT_MAX;
                         // For all w in S, w != k
                         for (unsigned int w = 0; w < n; w++) {
                             if (w != k && S & (1 << w)) {
-                                int cost = C[S & ~(1 << k)][w] + G[w][k];
+                                float cost = C[S & ~(1 << k)][w] + G[w][k];
                                 if (cost < min_cost) {
                                     min_cost = cost;
                                 }
@@ -136,10 +135,10 @@ int main() {
     free(sets);
 
     // Use computed subproblems to find the optimal cost
-    int opt_cost = INT_MAX;
+    float opt_cost = FLT_MAX;
     unsigned int S_tour = ((1 << n) - 1) & ~1;
     for (int k = 1; k < n; k++) {
-        int tour_cost = C[S_tour][k] + G[k][0];
+        float tour_cost = C[S_tour][k] + G[k][0];
         if (tour_cost < opt_cost) {
             opt_cost = tour_cost;
         }
