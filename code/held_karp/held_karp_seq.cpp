@@ -1,44 +1,16 @@
-/*  Held-Karp Algorithm for the Metric TSP Problem 
+/*  Sequential Held-Karp Algorithm for the Metric TSP Problem 
     Input: the number of cities n followed by the full matrix of distances.
     Output: The cost of the optimal tour.
 */
 #include <iostream>
 #include <vector>
 #include <limits.h>
+#include <ctime>
 using namespace std;
 
 
-
-// Return last row of Pascal's triangle
-int *pascals_triangle(int n) {
-    int **T = (int**)malloc(n * sizeof(int*));
-    for (int i = 0; i < n; i++) {
-        T[i] = (int*)malloc(n * sizeof(int));
-    }
-    T[0][0] = 1;
-    for (int i = 1; i < n; i++) {
-        T[i][0] = 1;
-        // cout << T[i][0] << " ";
-        for (int j = 1; j < i; j++) {
-            T[i][j] = T[i - 1][j - 1] + T[i - 1][j];
-            // cout << T[i][j] << " ";
-        }
-        T[i][i] = 1;
-        // cout << T[i][i] << " ";
-        // cout << endl;
-    }
-    int *T_last = T[n - 1];
-    for (int i = 0; i < n - 1; i++) {
-        free(T[i]);
-    }
-    free(T);
-    return T_last;
-}
-
-
-
-
 int main() {
+    clock_t exec_time = clock();
     // n = number of nodes
     int n;
     cin >> n;
@@ -64,23 +36,17 @@ int main() {
         C[i] = (int*)malloc(n * sizeof(int));
     }
 
-    // Precompute last row of Pascal's triangle for values of n choose p
-    // in order to statically parallelize for loop in main computation
-    int *T = pascals_triangle(n + 1);
-
     // First step of Held-Karp: compute base cases
     for (int k = 1; k < n; k++) {
         C[1 << k][k] = G[0][k];
     }
 
     // Main loop of Held-Karp: compute all subproblems via bottom-up DP
-    // Outer loop cannot be parallelized because larger subproblems depend on smaller ones
     for (int p = 2; p < n; p++) {
         unsigned int S = (1 << p) - 1;
         int limit = 1 << n;
         // For all S a subset of {1, 2, ..., n - 1} such that |S| = p
-        // This loop can be parallelized
-        for (int i = 0; i < T[p]; i++) {
+        while (S < limit) {
             if (!(S & 1)) {
                 // For all k in S
                 for (unsigned int k = 0; k < n; k++) {
@@ -120,10 +86,12 @@ int main() {
     cout << opt_cost << endl;
     
     // Free memory and return
-    free(T);
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
     free(C);
+
+    exec_time = clock() - exec_time;
+    cout << "Execution time: " << ((float)exec_time) / CLOCKS_PER_SEC << " seconds" << endl;
     return 0;
 }
