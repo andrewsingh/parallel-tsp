@@ -34,3 +34,5 @@ in that order. So the file should only have 1 + n^2 space-separated numbers. Not
  :--- |:--- |:--- |:---
  br17 | 17 | no | 39
  fri26 | 26 | yes | 937
+ gr21 | 21 | yes | 2707
+ gr24 | 24 | yes | 1272
