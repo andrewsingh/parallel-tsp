@@ -87,11 +87,15 @@ int main() {
     cout << "Tour cost = " << opt_cost << endl;
     
     // Free memory and return
+    for (int i = 0; i < n; i++) {
+        free(G[i]);
+    }
+    free(G);
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
     free(C);
-
+    
     clock_gettime(CLOCK_REALTIME, &end);
     double exec_time;
     exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
