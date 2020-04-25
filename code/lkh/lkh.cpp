@@ -13,20 +13,28 @@ using namespace std;
 
 pair<int, int> make_edge(int i, int j) {
     if (i > j) {
-        return pair(j, i);
+        return make_pair(j, i);
     } else {
-        return pair(i, j);
+        return make_pair(i, j);
     }
 }
 
 
-int get_tour_dist(vector<int> &tour, int **G) {
-    int dist = 0;
-    for (int i = 0; i < tour.size - 1; i++) {
-        dist += G[i][i + 1];
+int get_tour_dist(vector<int> &tour, int **G, int n) {
+    // int dist = 0;
+    // for (int i = 0; i < n - 1; i++) {
+    //     dist += G[i][i + 1];
+    // }
+    // dist += G[n - 1][0];
+    // return dist;
+
+    int currentIndex = 0;
+    double distance = 0;
+    for (int i = 0; i < n; i++) {
+        distance += G[i][tour[i]];
     }
-    dist += G[tour.size - 1][0];
-    return dist;
+
+    return distance;
 }
 
 
@@ -42,6 +50,7 @@ void reverse_tour(int start, int end, vector<int> &tour) {
     } while (current != end);
 }
 
+
 bool is_tour(vector<int> &tour, int n) {
     int count = 1;
     int start = tour[0];
@@ -54,7 +63,7 @@ bool is_tour(vector<int> &tour, int n) {
 
 
 void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
-    set<pair<int, int>> broken_set, joined_set;
+    set<pair<int, int> > broken_set, joined_set;
     vector<int> tour_opt = tour;
     double g_opt = 0;
     double g = 0;
@@ -70,7 +79,7 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
     double g_opt_local;
 
     from_v = tour[last_next_v];
-    long init_tour_dist = get_tour_dist(tour, G);
+    long init_tour_dist = get_tour_dist(tour, G, n);
 
     do {
         next_v = -1;
@@ -123,13 +132,13 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
     } while (next_v != -1);
 
     tour = tour_opt;
-    long distance_after = get_tour_dist(tour, G);
+    long distance_after = get_tour_dist(tour, G, n);
     assert(distance_after <= init_tour_dist);
     assert(is_tour(tour, n));
 
 }
 
-void optimize_tour(vector<int> &tour, int **G, int n) {
+int optimize_tour(vector<int> &tour, int **G, int n) {
     int diff;
     int old_dist = 0;
     int new_dist = 0;
@@ -138,7 +147,7 @@ void optimize_tour(vector<int> &tour, int **G, int n) {
         for (int i = 0; i < n; i++) {
             lk_move(i, tour, G, n);
         }
-        new_dist = get_tour_dist(tour, G);
+        new_dist = get_tour_dist(tour, G, n);
         diff = old_dist - new_dist;
         if (j != 0) {
             assert(diff >= 0);
@@ -148,6 +157,7 @@ void optimize_tour(vector<int> &tour, int **G, int n) {
         }
         old_dist = new_dist;
     }
+    return new_dist;
 }
 
 
@@ -172,17 +182,16 @@ int main() {
         }
     }
 
-    vector<int> initial_tour;
+    // initialize tour
+    vector<int> tour = vector<int>(n, 0);
+
+    // initial 'random' tour
     for (int i = 0; i < n; i++) {
-        initial_tour.push_back(i);
+        tour[i] = (i + 1) % n;
     }
 
-    bool improved = true;
-    while (improved) {
-        improved = improve(initial_tour, G, n);
-    }
-
-
+    int opt_cost = optimize_tour(tour, G, n);
+     
     // Output optimal cost
     cout << opt_cost << endl;
     
