@@ -16,7 +16,27 @@
 
 using namespace std;
 
+bool is_matrix;
+int n;
+float **G;
+float *X;
+float *Y;
 
+
+// Returns the distance from node i to node j
+float dist(int i, int j) {
+    if (is_matrix) {
+        return G[i][j];
+    } else {
+        int dx = X[i] - X[j];
+        int dy = Y[i] - Y[j];
+        // Round to be consistent with official TSPLIB solutions
+        return (int)(sqrt(dx * dx + dy * dy) + 0.5);
+    }
+}
+
+
+// Returns the sorted edge between nodes i and j
 pair<int, int> make_edge(int i, int j) {
     if (i > j) {
         return make_pair(j, i);
@@ -26,15 +46,17 @@ pair<int, int> make_edge(int i, int j) {
 }
 
 
-int get_tour_dist(vector<int> &tour, float **G, int n) {
+// Returns the total distance of tour
+int get_tour_dist(vector<int> &tour) {
     int currentIndex = 0;
     double distance = 0;
     for (int i = 0; i < n; i++) {
-        distance += G[i][tour[i]];
+        distance += dist(i, tour[i]);
     }
 
     return distance;
 }
+
 
 // Reverse tour from indices start to end
 void reverse_tour(int start, int end, vector<int> &tour) {
@@ -50,7 +72,8 @@ void reverse_tour(int start, int end, vector<int> &tour) {
 }
 
 
-bool is_tour(vector<int> &tour, int n) {
+// Check if tour is valid
+bool is_tour(vector<int> &tour) {
     int count = 1;
     int start = tour[0];
     while (start != 0) {
@@ -61,7 +84,8 @@ bool is_tour(vector<int> &tour, int n) {
 }
 
 
-void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
+// A single step of Lin-Kernighan
+void lk_move(int tour_start, vector<int> &tour) {
     set<pair<int, int> > broken_set, joined_set;
     vector<int> tour_opt = tour;
     double g_opt = 0;
@@ -78,12 +102,12 @@ void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
     double g_opt_local;
 
     from_v = tour[last_next_v];
-    long init_tour_dist = get_tour_dist(tour, G, n);
+    long init_tour_dist = get_tour_dist(tour);
 
     do {
         next_v = -1;
         broken_edge = make_edge(last_next_v, from_v);
-        broken_edge_length = G[broken_edge.first][broken_edge.second];
+        broken_edge_length = dist(broken_edge.first, broken_edge.second);
 
         if (joined_set.count(broken_edge) > 0) {
             break;
@@ -92,7 +116,7 @@ void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
         for (int possible_next_v = tour[from_v]; next_v == -1 && possible_next_v != tour_start; 
             possible_next_v = tour[possible_next_v]) {
             
-            g_local = broken_edge_length - G[from_v][possible_next_v];
+            g_local = broken_edge_length - dist(from_v, possible_next_v);
 
             // Criteria for the next link y_i
             if (!(
@@ -114,7 +138,7 @@ void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
             broken_set.insert(broken_edge);
             joined_set.insert(make_edge(from_v, next_v));
 
-            y_opt_length = G[from_v][tour_start];
+            y_opt_length = dist(from_v, tour_start);
             g_opt_local = g + (broken_edge_length - y_opt_length);
 
             if (g_opt_local > g_opt) {
@@ -123,7 +147,7 @@ void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
                 tour_opt[tour_start] = from_v;
             }
 
-            g += broken_edge_length - G[from_v][next_v];
+            g += broken_edge_length - dist(from_v, next_v);
             reverse_tour(from_v, last_possible_next_v, tour);
             next_from_v = last_possible_next_v;
             tour[from_v] = next_v;
@@ -133,14 +157,15 @@ void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
     } while (next_v != -1);
 
     tour = tour_opt;
-    long distance_after = get_tour_dist(tour, G, n);
+    long distance_after = get_tour_dist(tour);
     assert(distance_after <= init_tour_dist);
-    assert(is_tour(tour, n));
+    assert(is_tour(tour));
 
 }
 
 
-int lin_kernighan(float **G, int n) {
+// A single run of the Lin-Kernighan algorithm with a random initial tour
+int lin_kernighan() {
     int diff;
     int old_dist = 0;
     int new_dist = 0;
@@ -155,13 +180,13 @@ int lin_kernighan(float **G, int n) {
         tour[perm[i]] = perm[i + 1];
     }
     tour[perm[n - 1]] = perm[0];
-    assert(is_tour(tour, n));
+    assert(is_tour(tour));
 
     for (int j = 0; j < 100; j++) {
         for (int i = 0; i < n; i++) {
-            lk_move(i, tour, G, n);
+            lk_move(i, tour);
         }
-        new_dist = get_tour_dist(tour, G, n);
+        new_dist = get_tour_dist(tour);
         diff = old_dist - new_dist;
         if (j != 0) {
             assert(diff >= 0);
@@ -176,37 +201,41 @@ int lin_kernighan(float **G, int n) {
 
 
 
-int main(int argc, char *argv[]) {
-    int num_threads = omp_get_max_threads();
-    // Check if thread count is passed in as a command line argument
-    for (int i = 0; i < argc; i++) {
-        string arg(argv[i]);
-        if (arg == "-t" && i + 1 < argc) {
-            num_threads = atoi(argv[i + 1]);
-        }
-    }
-    omp_set_num_threads(num_threads);
-    cout << "Running with " << num_threads << " threads" << endl;
-
+int main() {
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
 
+    string instance_type;
+    cin >> instance_type;
+    is_matrix = (instance_type == "MATRIX");
+
     // n = number of nodes
-    int n;
     cin >> n;
 
-    // Allocate weights matrix
-    float **G = (float**)malloc(n * sizeof(float*));
-    for (int i = 0; i < n; i++) {
-        G[i] = (float*)malloc(n * sizeof(float));
-    }
+    if (is_matrix) {
+        // Allocate weights matrix
+        G = (float**)malloc(n * sizeof(float*));
+        for (int i = 0; i < n; i++) {
+            G[i] = (float*)malloc(n * sizeof(float));
+        }
 
-    // Read in weights matrix
-    float dist;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            cin >> dist;
-            G[i][j] = dist;
+        // Read in weights matrix
+        float dist;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                cin >> dist;
+                G[i][j] = dist;
+            }
+        }
+    } else {
+        // Allocate coordinate arrays
+        X = (float*)malloc(n * sizeof(float));
+        Y = (float*)malloc(n * sizeof(float));
+
+        // Read in coordinates
+        for (int i = 0; i < n; i++) {
+            cin >> X[i];
+            cin >> Y[i];
         }
     }
 
@@ -217,7 +246,7 @@ int main(int argc, char *argv[]) {
     int num_trials = 1000;
     #pragma omp parallel for schedule(static) reduction(min:opt_cost)
     for (int i = 0; i < num_trials; i++) {
-        cost = lin_kernighan(G, n);
+        cost = lin_kernighan();
         if (cost < opt_cost) {
             opt_cost = cost;
         }
@@ -227,10 +256,15 @@ int main(int argc, char *argv[]) {
     cout << "Tour cost = " << opt_cost << endl;
 
     // Free memory
-    for (int i = 0; i < n; i++) {
-        free(G[i]);
+    if (is_matrix) {
+        for (int i = 0; i < n; i++) {
+            free(G[i]);
+        }
+        free(G);
+    } else {
+        free(X);
+        free(Y);
     }
-    free(G);
     
     clock_gettime(CLOCK_REALTIME, &end);
     double exec_time;
