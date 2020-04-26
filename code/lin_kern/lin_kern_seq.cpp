@@ -22,6 +22,8 @@ float *X;
 float *Y;
 
 
+
+
 // Returns the distance from node i to node j
 float dist(int i, int j) {
     if (is_matrix) {
@@ -158,8 +160,6 @@ void lk_move(int tour_start, vector<int> &tour) {
     tour = tour_opt;
     long distance_after = get_tour_dist(tour);
     assert(distance_after <= init_tour_dist);
-    assert(is_tour(tour));
-
 }
 
 
@@ -179,8 +179,7 @@ int lin_kernighan() {
         tour[perm[i]] = perm[i + 1];
     }
     tour[perm[n - 1]] = perm[0];
-    assert(is_tour(tour));
-
+    
     for (int j = 0; j < 100; j++) {
         for (int i = 0; i < n; i++) {
             lk_move(i, tour);
@@ -195,6 +194,8 @@ int lin_kernighan() {
         }
         old_dist = new_dist;
     }
+
+    assert(is_tour(tour));
     return new_dist;
 }
 

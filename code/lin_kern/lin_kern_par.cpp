@@ -16,6 +16,7 @@
 
 using namespace std;
 
+
 bool is_matrix;
 int n;
 float **G;
@@ -159,8 +160,6 @@ void lk_move(int tour_start, vector<int> &tour) {
     tour = tour_opt;
     long distance_after = get_tour_dist(tour);
     assert(distance_after <= init_tour_dist);
-    assert(is_tour(tour));
-
 }
 
 
@@ -180,8 +179,7 @@ int lin_kernighan() {
         tour[perm[i]] = perm[i + 1];
     }
     tour[perm[n - 1]] = perm[0];
-    assert(is_tour(tour));
-
+    
     for (int j = 0; j < 100; j++) {
         for (int i = 0; i < n; i++) {
             lk_move(i, tour);
@@ -196,12 +194,25 @@ int lin_kernighan() {
         }
         old_dist = new_dist;
     }
+
+    assert(is_tour(tour));
     return new_dist;
 }
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    int num_threads = omp_get_max_threads();
+    // Check if thread count is passed in as a command line argument
+    for (int i = 0; i < argc; i++) {
+        string arg(argv[i]);
+        if (arg == "-t" && i + 1 < argc) {
+            num_threads = atoi(argv[i + 1]);
+        }
+    }
+    omp_set_num_threads(num_threads);
+    cout << "Running with " << num_threads << " threads" << endl;
+
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
 
@@ -243,7 +254,7 @@ int main() {
     // Parallelize this part, also tune the specific value of num_trials
     float cost;
     float opt_cost = FLT_MAX;
-    int num_trials = 1000;
+    int num_trials = 100;
     #pragma omp parallel for schedule(static) reduction(min:opt_cost)
     for (int i = 0; i < num_trials; i++) {
         cost = lin_kernighan();
