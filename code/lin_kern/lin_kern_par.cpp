@@ -1,15 +1,17 @@
+/*  Parallel Lin-Kernighan heuristic
+    A tour is represented as an vector such that at a city i, the next city to
+    travel to is tour[i] */
+
+
 #include <vector>
-#include <cmath>
 #include <set>
 #include <iostream>
-#include <cassert>
-#include <cstdlib>
-#include <ctime>
-#include <sys/time.h>
-#include <stdio.h>
-#include <unistd.h>
+#include <math.h>
+#include <assert.h>
+#include <omp.h>
 
 using namespace std;
+
 
 pair<int, int> make_edge(int i, int j) {
     if (i > j) {
@@ -21,13 +23,6 @@ pair<int, int> make_edge(int i, int j) {
 
 
 int get_tour_dist(vector<int> &tour, int **G, int n) {
-    // int dist = 0;
-    // for (int i = 0; i < n - 1; i++) {
-    //     dist += G[i][i + 1];
-    // }
-    // dist += G[n - 1][0];
-    // return dist;
-
     int currentIndex = 0;
     double distance = 0;
     for (int i = 0; i < n; i++) {
@@ -37,7 +32,7 @@ int get_tour_dist(vector<int> &tour, int **G, int n) {
     return distance;
 }
 
-
+// Reverse tour from indices start to end
 void reverse_tour(int start, int end, vector<int> &tour) {
     int current = start;
     int next = tour[start];
@@ -95,12 +90,13 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
             
             g_local = broken_edge_length - G[from_v][possible_next_v];
 
+            // Criteria for the next link y_i
             if (!(
-                broken_set.count(make_edge(from_v, possible_next_v)) == 0 &&
                 g + g_local > 0 &&
-                joined_set.count(make_edge(last_possible_next_v, possible_next_v)) == 0 &&
                 tour[possible_next_v] != 0 &&
-                possible_next_v != tour[from_v]
+                possible_next_v != tour[from_v] &&
+                broken_set.count(make_edge(from_v, possible_next_v)) == 0 &&
+                joined_set.count(make_edge(last_possible_next_v, possible_next_v)) == 0
             )) {
                 last_possible_next_v = possible_next_v;
                 continue;
@@ -109,6 +105,7 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
             next_v = possible_next_v;
         }
 
+        // If new y_i is valid
         if (next_v != -1) {
             broken_set.insert(broken_edge);
             joined_set.insert(make_edge(from_v, next_v));
@@ -137,6 +134,7 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
     assert(is_tour(tour, n));
 
 }
+
 
 int optimize_tour(vector<int> &tour, int **G, int n) {
     int diff;
@@ -182,10 +180,9 @@ int main() {
         }
     }
 
-    // initialize tour
     vector<int> tour = vector<int>(n, 0);
 
-    // initial 'random' tour
+    // Initial tour
     for (int i = 0; i < n; i++) {
         tour[i] = (i + 1) % n;
     }
