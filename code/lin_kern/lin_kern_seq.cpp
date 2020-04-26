@@ -6,8 +6,12 @@
 #include <vector>
 #include <set>
 #include <iostream>
-#include <math.h>
+#include <algorithm>
+#include <stdlib.h>
+#include <float.h>
 #include <assert.h>
+#include <math.h>
+#include <time.h>
 
 using namespace std;
 
@@ -21,7 +25,7 @@ pair<int, int> make_edge(int i, int j) {
 }
 
 
-int get_tour_dist(vector<int> &tour, int **G, int n) {
+int get_tour_dist(vector<int> &tour, float **G, int n) {
     int currentIndex = 0;
     double distance = 0;
     for (int i = 0; i < n; i++) {
@@ -56,7 +60,7 @@ bool is_tour(vector<int> &tour, int n) {
 }
 
 
-void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
+void lk_move(int tour_start, vector<int> &tour, float **G, int n) {
     set<pair<int, int> > broken_set, joined_set;
     vector<int> tour_opt = tour;
     double g_opt = 0;
@@ -135,10 +139,22 @@ void lk_move(int tour_start, vector<int> &tour, int **G, int n) {
 }
 
 
-int optimize_tour(vector<int> &tour, int **G, int n) {
+int lin_kernighan(float **G, int n) {
     int diff;
     int old_dist = 0;
     int new_dist = 0;
+
+    vector<int> perm = vector<int>(n, 0);
+    for (int i = 0; i < n; i++) {
+        perm[i] = i;
+    }
+    random_shuffle(perm.begin(), perm.end());
+    vector<int> tour = vector<int>(n, 0);
+    for (int i = 0; i < n - 1; i++) {
+        tour[perm[i]] = perm[i + 1];
+    }
+    tour[perm[n - 1]] = perm[0];
+    assert(is_tour(tour, n));
 
     for (int j = 0; j < 100; j++) {
         for (int i = 0; i < n; i++) {
@@ -160,18 +176,21 @@ int optimize_tour(vector<int> &tour, int **G, int n) {
 
 
 int main() {
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
     // n = number of nodes
     int n;
     cin >> n;
 
     // Allocate weights matrix
-    int **G = (int**)malloc(n * sizeof(int*));
+    float **G = (float**)malloc(n * sizeof(float*));
     for (int i = 0; i < n; i++) {
-        G[i] = (int*)malloc(n * sizeof(int));
+        G[i] = (float*)malloc(n * sizeof(float));
     }
 
     // Read in weights matrix
-    int dist;
+    float dist;
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             cin >> dist;
@@ -179,17 +198,31 @@ int main() {
         }
     }
 
-    vector<int> tour = vector<int>(n, 0);
-
-    // Initial tour
-    for (int i = 0; i < n; i++) {
-        tour[i] = (i + 1) % n;
+    // Run Lin-Kernighan num_trials times and output the lowest cost
+    // Parallelize this part, also tune the specific value of num_trials
+    float cost;
+    float opt_cost = FLT_MAX;
+    int num_trials = 100;
+    for (int i = 0; i < num_trials; i++) {
+        cost = lin_kernighan(G, n);
+        if (cost < opt_cost) {
+            opt_cost = cost;
+        }
     }
-
-    int opt_cost = optimize_tour(tour, G, n);
-     
+ 
     // Output optimal cost
-    cout << opt_cost << endl;
+    cout << "Tour cost = " << opt_cost << endl;
+
+    // Free memory
+    for (int i = 0; i < n; i++) {
+        free(G[i]);
+    }
+    free(G);
     
+    clock_gettime(CLOCK_REALTIME, &end);
+    double exec_time;
+    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
+    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }

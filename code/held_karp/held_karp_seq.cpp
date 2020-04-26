@@ -86,7 +86,7 @@ int main() {
     // Output optimal cost
     cout << "Tour cost = " << opt_cost << endl;
     
-    // Free memory and return
+    // Free memory
     for (int i = 0; i < n; i++) {
         free(G[i]);
     }
