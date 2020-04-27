@@ -36,18 +36,23 @@ population generate_initial(int n, int **weights) {
 
     for (int i = 0; i < n; i++) {
         individual ind;
-        int visited = 0;
+        // int visited = 0;
+        vector<int> visited;
         // pick a random starting city
         int c = rand() % n;
+        int oc = c;
         ind.cities.push_back(c);
-        visited |= (1 << c);
+        // visited |= (1 << c);
+        visited.push_back(c);
         int length = 0;
-        while (visited != all_visited) {
+        // while (visited != all_visited) {
+        while (visited.size() < n) {
             // pick a random vertex that hasn't been visited yet
             vector<int> next;
             for (int j = 0; j < n; j++) {
                 // theres a valid edge from c to j and j hasn't been visited yet
-                if ((((visited >> j) & 1) == 0)) {
+                // if ((((visited >> j) & 1) == 0)) {
+                if (find(visited.begin(), visited.end(), j) == visited.end()) {
                     next.push_back(j);
                 }
             }
@@ -56,9 +61,11 @@ population generate_initial(int n, int **weights) {
             ind.cities.push_back(nc);
             length += weights[c][nc];
             c = nc;
-            visited |= (1 << nc);
+            // visited |= (1 << nc);
+            visited.push_back(nc);
         // continue until all cities visited
         }
+        length += weights[c][oc];
         ind.path_len = length;
         pop.ids[i] = ind;
         pop.total_len += length;
@@ -114,10 +121,14 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
     int all_visited = (1 << n) - 1;
     // pick a random starting city
     int c = rand() % n;
+    int oc = c;
     ind.cities.push_back(c);
-    int visited = (1 << c);
+    // int visited = (1 << c);
+    vector<int> visited;
+    visited.push_back(c);
     int length = 0;
-    while (visited != all_visited) {
+    // while (visited != all_visited) {
+    while (visited.size() < n) {
         // figure out what cities (c1 and c2) come next in p1 and p2 respectively
         int ci1 = (find(p1.cities.begin(), p1.cities.end(), c)) - p1.cities.begin();
         int ci2 = (find(p2.cities.begin(), p2.cities.end(), c)) - p2.cities.begin();
@@ -130,7 +141,8 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
         // select the closer city that doesn't create a cycle
         if (w1 < w2) {
             // if its been visited, dont visit it again
-            if (((visited >> c1) & 1) == 1) {
+            // if (((visited >> c1) & 1) == 1) {
+            if (find(visited.begin(), visited.end(), c1) != visited.end()) {
                 cycle = true;
             }
             // otherwise its fine to visit it 
@@ -138,16 +150,19 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
                 ind.cities.push_back(c1);
                 length += weights[c][c1];
                 c = c1;
-                visited |= (1 << c1);
+                // visited |= (1 << c1);
+                visited.push_back(c1);
             }
         } else {
-            if (((visited >> c2) & 1) == 1) {
+            // if (((visited >> c2) & 1) == 1) {
+            if (find(visited.begin(), visited.end(), c2) != visited.end()) {
                 cycle = true;
             } else {
                 ind.cities.push_back(c2);
                 length += weights[c][c2];
                 c = c2;
-                visited |= (1 << c2);
+                // visited |= (1 << c2);
+                visited.push_back(c2);
             }
         }
 
@@ -155,22 +170,26 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
         // try the other city if the closer one creates a cycle
         if (cycle) {
             if (w1 >= w2) {
-                if (((visited >> c1) & 1) == 1) {
+                // if (((visited >> c1) & 1) == 1) {
+                if (find(visited.begin(), visited.end(), c1) != visited.end()) {
                     cycle1 = true;
                 } else {
                     ind.cities.push_back(c1);
                     length += weights[c][c1];
                     c = c1;
-                    visited |= (1 << c1);
+                    // visited |= (1 << c1);
+                    visited.push_back(c1);
                 }
             } else {
-                if (((visited >> c2) & 1) == 1) {
+                // if (((visited >> c2) & 1) == 1) {
+                if (find(visited.begin(), visited.end(), c2) != visited.end()) {
                     cycle1 = true;
                 } else {
                     ind.cities.push_back(c2);
                     length += weights[c][c2];
                     c = c2;
-                    visited |= (1 << c2);
+                    // visited |= (1 << c2);
+                    visited.push_back(c2);
                 }
             }
         }
@@ -181,7 +200,8 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
             // pick a random vertex that hasn't been visited yet
             for (int j = 0; j < n; j++) {
                 // theres a valid edge from c to j and j hasn't been visited yet
-                if ((((visited >> j) & 1) == 0)) {
+                // if ((((visited >> j) & 1) == 0)) {
+                if (find(visited.begin(), visited.end(), j) == visited.end()) {
                     next.push_back(j);
                 }
             }
@@ -190,12 +210,13 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
             ind.cities.push_back(nc);
             length += weights[c][nc];
             c = nc;
-            visited |= (1 << nc);
+            // visited |= (1 << nc);
+            visited.push_back(nc);
         }
 
     // repeat until all cities visited
     }
-
+    length += weights[c][oc];
     ind.path_len = length;
     return ind;
 }
