@@ -12,16 +12,16 @@
 #include <assert.h>
 #include <math.h>
 #include <time.h>
+#include "../parse/parser.h"
 
 using namespace std;
 
+
+// Global variables
 bool is_matrix;
 int n;
-float **G;
-float *X;
-float *Y;
-
-
+vector<vector<float> > G;
+vector<float> X, Y;
 
 
 // Returns the distance from node i to node j
@@ -159,7 +159,7 @@ void lk_move(int tour_start, vector<int> &tour) {
 
     tour = tour_opt;
     long distance_after = get_tour_dist(tour);
-    assert(distance_after <= init_tour_dist);
+    //assert(distance_after <= init_tour_dist);
 }
 
 
@@ -201,50 +201,40 @@ int lin_kernighan() {
 
 
 
-int main() {
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
-
-    string instance_type;
-    cin >> instance_type;
-    is_matrix = (instance_type == "MATRIX");
-
-    // n = number of nodes
-    cin >> n;
-
-    if (is_matrix) {
-        // Allocate weights matrix
-        G = (float**)malloc(n * sizeof(float*));
-        for (int i = 0; i < n; i++) {
-            G[i] = (float*)malloc(n * sizeof(float));
-        }
-
-        // Read in weights matrix
-        float dist;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                cin >> dist;
-                G[i][j] = dist;
-            }
-        }
-    } else {
-        // Allocate coordinate arrays
-        X = (float*)malloc(n * sizeof(float));
-        Y = (float*)malloc(n * sizeof(float));
-
-        // Read in coordinates
-        for (int i = 0; i < n; i++) {
-            cin >> X[i];
-            cin >> Y[i];
+int main(int argc, char *argv[]) {
+    string file_name = "";
+    int runs = 1;
+    for (int i = 0; i < argc; i++) {
+        string arg(argv[i]);
+        if (arg == "-f" && i + 1 < argc) {
+            file_name = argv[i + 1];
+        } else if (arg == "-r" && i + 1 < argc) {
+            runs = atoi(argv[i + 1]);
         }
     }
 
-    // Run Lin-Kernighan num_trials times and output the lowest cost
-    // Parallelize this part, also tune the specific value of num_trials
+    if (file_name == "") {
+        cout << "Please specify a filename by adding -f [FILE_NAME]" << endl;
+        return 0;
+    }
+
+    is_matrix = (file_name.find(".mat") != string::npos);
+    if (is_matrix) {
+        n = parse_matrix(file_name, G);
+    } else {
+        n = parse_euc_2d(file_name, X, Y);
+    }
+
+    cout << runs << " runs" << endl;
+
+    // Parsing is done, start the timer
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
+    // Run Lin-Kernighan 'runs' times and output the lowest cost
     float cost;
     float opt_cost = FLT_MAX;
-    int num_trials = 100;
-    for (int i = 0; i < num_trials; i++) {
+    for (int i = 0; i < runs; i++) {
         cost = lin_kernighan();
         if (cost < opt_cost) {
             opt_cost = cost;
@@ -253,19 +243,10 @@ int main() {
  
     // Output optimal cost
     cout << "Tour cost = " << opt_cost << endl;
-
-    // Free memory
-    if (is_matrix) {
-        for (int i = 0; i < n; i++) {
-            free(G[i]);
-        }
-        free(G);
-    } else {
-        free(X);
-        free(Y);
-    }
     
+    // Result has been printed, stop the timer
     clock_gettime(CLOCK_REALTIME, &end);
+    // Calculate and print execution time
     double exec_time;
     exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
     exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
