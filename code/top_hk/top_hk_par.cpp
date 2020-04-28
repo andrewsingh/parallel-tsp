@@ -1,11 +1,31 @@
 #include <iostream>
 #include <cstring>
+#include <math.h>
 #include <omp.h>
+#include "../parse/parser.h"
 
 using namespace std;
 
+// Global variables
+bool is_matrix;
+int n;
+vector<vector<float> > G;
+vector<float> X, Y;
+
+// Returns the distance from node i to node j
+float dist(int i, int j) {
+    if (is_matrix) {
+        return G[i][j];
+    } else {
+        int dx = X[i] - X[j];
+        int dy = Y[i] - Y[j];
+        // Round to be consistent with official TSPLIB solutions
+        return (int)(sqrt(dx * dx + dy * dy) + 0.5);
+    }
+}
+
 // Subset dp to solve for shortest non simple TSP path
-int dp(int n, int S, int v, int **weights, int **memo) {
+int dp(int S, int v, int **memo) {
     // We've already solved this subproblem
     if (memo[S][v] != -1) {
         return memo[S][v];
@@ -13,8 +33,8 @@ int dp(int n, int S, int v, int **weights, int **memo) {
 
     // Base case - only one vertex left to consider
     if ((S & ~(1 << v)) == 0) {
-        memo[S][v] = weights[v][0];
-        return weights[0][v];
+        memo[S][v] = dist(0, v);
+        return dist(0, v);
     }
     
     // Solve subprobloem (S-v, u), where u is any vertex in S that's not v or the source x
@@ -24,7 +44,7 @@ int dp(int n, int S, int v, int **weights, int **memo) {
     #pragma omp parallel for
     for (int u = 0; u < n; u++) {
         if (u != v && (S >> u & 1 == 1)) {
-            val = dp(n, S & ~(1 << (v)), u, weights, memo) + weights[u][v];
+            val = dp(S & ~(1 << (v)), u, memo) + dist(u, v);
             if (first || minval >= val) {
                 minval = val;
                 minprev = u;
@@ -40,36 +60,45 @@ int dp(int n, int S, int v, int **weights, int **memo) {
 }
 
 int main(int argc, char *argv[]) {
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
-
     int num_threads = omp_get_max_threads();
 
-    // Check if thread count is passed in as a command line argument
+    string file_name = "";
     for (int i = 0; i < argc; i++) {
         string arg(argv[i]);
-        if (arg == "-t" && i + 1 < argc) {
+        if (arg == "-f" && i + 1 < argc) {
+            file_name = argv[i + 1];
+        } else if (arg == "-t" && i + 1 < argc) {
+    omp_set_num_threads(num_threads);
+
             num_threads = atoi(argv[i + 1]);
         }
     }
 
-    omp_set_num_threads(num_threads);
+    if (file_name == "") {
+        cout << "Please specify a filename by adding -f [FILE_NAME]" << endl;
+        return 0;
+    }
+
+    is_matrix = (file_name.find(".mat") != string::npos);
+    if (is_matrix) {
+        n = parse_matrix(file_name, G);
+    } else {
+        n = parse_euc_2d(file_name, X, Y);
+    }
+
+    if (n > 30) {
+        cout << "Please run on a smaller graph with at most 30 vertices" << endl;
+        return 0;
+    }
+
     cout << "Running with " << num_threads << " threads" << endl;
+    
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
 
-    int n;
-    cin >> n;
-
-    // Set up shortest path and next pointer arrays
     unsigned S = 0; // initial set of vertices
-    int **weights;
-    weights = (int **)malloc(n*n*sizeof(int*));
-
     for (int i = 0; i < n; i++) {
         S |= (1 << i);
-        weights[i] = (int *)malloc(n*sizeof(int));
-        for (int j = 0; j < n; j++) {
-            cin >> weights[i][j];
-        }
     }
 
     // Set up tables and solve tsp with subset dp
@@ -80,7 +109,7 @@ int main(int argc, char *argv[]) {
         memset(memo[i], -1, n * sizeof(int));
     }
 
-    cout << "Tour cost = " << dp(n, S, 0, weights, memo) << endl;
+    cout << "Tour cost = " << dp(S, 0, memo) << endl;
 
     clock_gettime(CLOCK_REALTIME, &end);
     double exec_time;

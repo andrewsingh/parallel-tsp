@@ -4,9 +4,9 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 using namespace std;
-
 
 // Parses distance matrix of file_name into G and returns number of nodes n
 int parse_matrix(string file_name, vector<vector<float> > &G) {
@@ -14,7 +14,12 @@ int parse_matrix(string file_name, vector<vector<float> > &G) {
     string str;
     int n;
 
-    instance.open("../../instances/matrix/" + file_name, ios::in);
+    if (((filesystem::current_path()).string()).find("code") != string::npos) {
+        instance.open("../../instances/matrix/" + file_name, ios::in);
+    } else{
+        // for benchmarking to be able to parse files too
+        instance.open("instances/matrix/" + file_name, ios::in);
+    }
     instance >> n;
     for (int i = 0; i < n; i++) {
         G.push_back(vector<float>(n, 0));
@@ -33,7 +38,12 @@ int parse_euc_2d(string file_name, vector<float> &X, vector<float> &Y) {
     int n;
     float xi, yi;
 
-    instance.open("../../instances/euc2d/" + file_name, ios::in);
+    if (((filesystem::current_path()).string()).find("code") != string::npos) {
+        instance.open("../../instances/euc2d/" + file_name, ios::in);
+    } else{
+        // for benchmarking to be able to parse files too
+        instance.open("instances/euc2d/" + file_name, ios::in);
+    }
     instance >> str;
     while (instance.good() && str != "DIMENSION" && str != "DIMENSION:") {
         instance >> str;

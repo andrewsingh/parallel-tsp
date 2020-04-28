@@ -1,6 +1,8 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <math.h>
+#include "../parse/parser.h"
 
 using namespace std;
 
@@ -21,37 +23,53 @@ struct parents {
 // Represents all the individuals in the current population
 struct population {
     individual *ids;
+    // vector<individual> ids;
     int total_len; // total length of all individual paths
     int size;
     parents *pars;
 };
 
+// Global variables
+bool is_matrix;
+int n;
+vector<vector<float> > G;
+vector<float> X, Y;
+
+// Returns the distance from node i to node j
+float dist(int i, int j) {
+    if (is_matrix) {
+        return G[i][j];
+    } else {
+        int dx = X[i] - X[j];
+        int dy = Y[i] - Y[j];
+        // Round to be consistent with official TSPLIB solutions
+        return (int)(sqrt(dx * dx + dy * dy) + 0.5);
+    }
+}
+
 // Generate a random, initial population of size n
-population generate_initial(int n, int **weights) {
+population generate_initial() {
     population pop;
-    pop.ids = (individual *)malloc(n*sizeof(individual));
-    pop.pars = (parents *) malloc(n*sizeof(parents));
+    pop.ids = (individual *)calloc(n, sizeof(individual));
+    pop.pars = (parents *)calloc(n, sizeof(parents));
 
     int all_visited = (1 << n) - 1;
 
     for (int i = 0; i < n; i++) {
         individual ind;
-        // int visited = 0;
+        // using a vector for visited to deal with large graphs
         vector<int> visited;
         // pick a random starting city
         int c = rand() % n;
         int oc = c;
         ind.cities.push_back(c);
-        // visited |= (1 << c);
         visited.push_back(c);
         int length = 0;
-        // while (visited != all_visited) {
         while (visited.size() < n) {
             // pick a random vertex that hasn't been visited yet
             vector<int> next;
             for (int j = 0; j < n; j++) {
                 // theres a valid edge from c to j and j hasn't been visited yet
-                // if ((((visited >> j) & 1) == 0)) {
                 if (find(visited.begin(), visited.end(), j) == visited.end()) {
                     next.push_back(j);
                 }
@@ -59,18 +77,16 @@ population generate_initial(int n, int **weights) {
             int nci = rand() % next.size();
             int nc = next[nci];
             ind.cities.push_back(nc);
-            length += weights[c][nc];
+            length += dist(c, nc);
             c = nc;
-            // visited |= (1 << nc);
             visited.push_back(nc);
         // continue until all cities visited
         }
-        length += weights[c][oc];
+        length += dist(c, oc);
         ind.path_len = length;
         pop.ids[i] = ind;
         pop.total_len += length;
     }
-
 
     pop.size = n;
     return pop;
@@ -116,52 +132,46 @@ void select_parents(population &pop) {
 }
 
 // Given two parents, apply a greedy crossover method to create one new individaul
-individual crossover(individual &p1, individual &p2, int n, int **weights) {
+individual crossover(individual &p1, individual &p2) {
     individual ind;
     int all_visited = (1 << n) - 1;
     // pick a random starting city
     int c = rand() % n;
     int oc = c;
     ind.cities.push_back(c);
-    // int visited = (1 << c);
     vector<int> visited;
     visited.push_back(c);
     int length = 0;
-    // while (visited != all_visited) {
     while (visited.size() < n) {
         // figure out what cities (c1 and c2) come next in p1 and p2 respectively
         int ci1 = (find(p1.cities.begin(), p1.cities.end(), c)) - p1.cities.begin();
         int ci2 = (find(p2.cities.begin(), p2.cities.end(), c)) - p2.cities.begin();
         int c1 = p1.cities[(ci1 + 1) % n];
         int c2 = p2.cities[(ci2 + 1) % n];
-        int w1 = weights[c][c1];
-        int w2 = weights[c][c2];
+        int w1 = dist(c, c1);
+        int w2 = dist(c, c2);
         
         bool cycle = false;
         // select the closer city that doesn't create a cycle
         if (w1 < w2) {
             // if its been visited, dont visit it again
-            // if (((visited >> c1) & 1) == 1) {
             if (find(visited.begin(), visited.end(), c1) != visited.end()) {
                 cycle = true;
             }
             // otherwise its fine to visit it 
             else {
                 ind.cities.push_back(c1);
-                length += weights[c][c1];
+                length += dist(c, c1);
                 c = c1;
-                // visited |= (1 << c1);
                 visited.push_back(c1);
             }
         } else {
-            // if (((visited >> c2) & 1) == 1) {
             if (find(visited.begin(), visited.end(), c2) != visited.end()) {
                 cycle = true;
             } else {
                 ind.cities.push_back(c2);
-                length += weights[c][c2];
+                length += dist(c, c2);
                 c = c2;
-                // visited |= (1 << c2);
                 visited.push_back(c2);
             }
         }
@@ -170,25 +180,21 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
         // try the other city if the closer one creates a cycle
         if (cycle) {
             if (w1 >= w2) {
-                // if (((visited >> c1) & 1) == 1) {
                 if (find(visited.begin(), visited.end(), c1) != visited.end()) {
                     cycle1 = true;
                 } else {
                     ind.cities.push_back(c1);
-                    length += weights[c][c1];
+                    length += dist(c, c1);
                     c = c1;
-                    // visited |= (1 << c1);
                     visited.push_back(c1);
                 }
             } else {
-                // if (((visited >> c2) & 1) == 1) {
                 if (find(visited.begin(), visited.end(), c2) != visited.end()) {
                     cycle1 = true;
                 } else {
                     ind.cities.push_back(c2);
-                    length += weights[c][c2];
+                    length += dist(c, c2);
                     c = c2;
-                    // visited |= (1 << c2);
                     visited.push_back(c2);
                 }
             }
@@ -200,7 +206,6 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
             // pick a random vertex that hasn't been visited yet
             for (int j = 0; j < n; j++) {
                 // theres a valid edge from c to j and j hasn't been visited yet
-                // if ((((visited >> j) & 1) == 0)) {
                 if (find(visited.begin(), visited.end(), j) == visited.end()) {
                     next.push_back(j);
                 }
@@ -208,15 +213,14 @@ individual crossover(individual &p1, individual &p2, int n, int **weights) {
             int nci = rand() % next.size();
             int nc = next[nci];
             ind.cities.push_back(nc);
-            length += weights[c][nc];
+            length += dist(c, nc);
             c = nc;
-            // visited |= (1 << nc);
             visited.push_back(nc);
         }
 
     // repeat until all cities visited
     }
-    length += weights[c][oc];
+    length += dist(c, oc);
     ind.path_len = length;
     return ind;
 }
@@ -253,31 +257,40 @@ bool convergence(population pop, int n) {
     return true;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    string file_name = "";
+    for (int i = 0; i < argc; i++) {
+        string arg(argv[i]);
+        if (arg == "-f" && i + 1 < argc) {
+            file_name = argv[i + 1];
+        }  
+    }
+
+    if (file_name == "") {
+        cout << "Please specify a filename by adding -f [FILE_NAME]" << endl;
+        return 0;
+    }
+
+    is_matrix = (file_name.find(".mat") != string::npos);
+    if (is_matrix) {
+        n = parse_matrix(file_name, G);
+    } else {
+        n = parse_euc_2d(file_name, X, Y);
+    }
+
+    if (n > 500) {
+        cout << "Please run on a smaller graph with at most 500 vertices" << endl;
+        return 0;
+    }
+
     // set random seed 
     srand (time(NULL));
 
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
 
-    int n;
-    // Read in number of vertices
-    cin >> n;
-
-    // set up shortest path arrays
-    int **weights;
-    weights = (int **)malloc(n*sizeof(int*));
-    // read in edges
-    for (int i = 0; i < n; i++) {
-        weights[i] = (int *)malloc(n*sizeof(int));
-        for (int j = 0; j < n; j++) {
-            cin >> weights[i][j];
-        }
-    }
-
-
     // genetic algorithm
-    population pop = generate_initial(n, weights);
+    population pop = generate_initial();
 
     while (!convergence(pop, n)) {
         select_parents(pop);
@@ -285,7 +298,7 @@ int main() {
         pop.total_len = 0;
         for (int i = 0; i < pop.size - 1; i++) {
             parents p = pop.pars[i];
-            individual ind = crossover(p.p1, p.p2, n, weights);
+            individual ind = crossover(p.p1, p.p2);
             mutate(ind, n);
             pop.ids[i] = ind;
         }
