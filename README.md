@@ -35,3 +35,5 @@ in that order. So the file should only contain the instance type followed by eit
  gr24 | 24 | yes | 1272
  lin105 | 105 | yes | 14379
  lin318 | 318 | yes | 42029
+ u1060 | 1060 | yes | 224094
+ u2319 | 2319 | yes | 234256

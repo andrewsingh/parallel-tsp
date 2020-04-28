@@ -1,6 +1,4 @@
-/*  Sequential Lin-Kernighan heuristic
-    A tour is represented as an vector such that at a city i, the next city to
-    travel to is tour[i] */
+/*  Parallel Lin-Kernighan heuristic */
 
 
 #include <vector>
@@ -164,7 +162,9 @@ void lk_move(int tour_start, vector<int> &tour) {
 }
 
 
-// A single run of the Lin-Kernighan algorithm with a random initial tour
+/* A single run of the Lin-Kernighan algorithm with a random initial tour
+    A tour is represented as an vector such that at city i, the next city to
+    travel to is tour[i] */
 int lin_kernighan() {
     int diff;
     int old_dist = 0;
