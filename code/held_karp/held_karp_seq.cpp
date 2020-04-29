@@ -3,33 +3,34 @@
     Output: The cost of the optimal tour.
 */
 #include <iostream>
+#include <vector>
 #include <stdlib.h>
 #include <float.h>
-#include <time.h>
+#include "../parse/parser.h"
+
 using namespace std;
 
 
-int main() {
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
+// Global variables
+int n;
+vector<vector<float> > G;
 
-    // n = number of nodes
-    int n;
-    cin >> n;
 
-    // Allocate weights matrix
-    float **G = (float**)malloc(n * sizeof(float*));
-    for (int i = 0; i < n; i++) {
-        G[i] = (float*)malloc(n * sizeof(float));
-    }
-
-    // Read in weights matrix
-    float dist;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            cin >> G[i][j];
+int main(int argc, char *argv[]) {
+    string file_name = "";
+    for (int i = 0; i < argc; i++) {
+        string arg(argv[i]);
+        if (arg == "-f" && i + 1 < argc) {
+            file_name = argv[i + 1];
         }
     }
+
+    if (file_name == "") {
+        cout << "Please specify a filename by adding -f [FILE_NAME]" << endl;
+        return 0;
+    }
+
+    n = parse_matrix(file_name, G);
 
     // Allocate DP array
     float **C = (float**)malloc((1 << n) * sizeof(float*));
@@ -87,19 +88,10 @@ int main() {
     cout << "Tour cost = " << opt_cost << endl;
     
     // Free memory
-    for (int i = 0; i < n; i++) {
-        free(G[i]);
-    }
-    free(G);
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
     free(C);
     
-    clock_gettime(CLOCK_REALTIME, &end);
-    double exec_time;
-    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
-    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
-    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }

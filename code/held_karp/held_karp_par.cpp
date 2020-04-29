@@ -3,22 +3,26 @@
     Output: The cost of the optimal tour.
 */
 #include <iostream>
+#include <vector>
 #include <stdlib.h>
 #include <float.h>
 #include <omp.h>
+#include "../parse/parser.h"
+
 using namespace std;
 
+
+// Global variables
+int n;
+vector<vector<float> > G;
 
 
 /*  Return last row of Pascal's triangle
     This function takes on the order of 1e-6 seconds so no point
     trying to optimize it any further
 */
-int *pascals_triangle(int n) {
-    int **T = (int**)malloc(n * sizeof(int*));
-    for (int i = 0; i < n; i++) {
-        T[i] = (int*)malloc(n * sizeof(int));
-    }
+vector<int> pascals_triangle(int n) {
+    vector<vector<int> > T(n, vector<int>(n, 0));
     T[0][0] = 1;
     for (int i = 1; i < n; i++) {
         T[i][0] = 1;
@@ -27,47 +31,31 @@ int *pascals_triangle(int n) {
         }
         T[i][i] = 1;
     }
-    int *T_last = T[n - 1];
-    for (int i = 0; i < n - 1; i++) {
-        free(T[i]);
-    }
-    free(T);
-    return T_last;
+    return T[n - 1];
 }
 
 
 int main(int argc, char *argv[]) {
+    string file_name = "";
     int num_threads = omp_get_max_threads();
     // Check if thread count is passed in as a command line argument
     for (int i = 0; i < argc; i++) {
         string arg(argv[i]);
-        if (arg == "-t" && i + 1 < argc) {
+        if (arg == "-f" && i + 1 < argc) {
+            file_name = argv[i + 1];
+        } else if (arg == "-t" && i + 1 < argc) {
             num_threads = atoi(argv[i + 1]);
         }
     }
     omp_set_num_threads(num_threads);
     cout << "Running with " << num_threads << " threads" << endl;
 
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
-
-    // n = number of nodes
-    int n;
-    cin >> n;
-
-    // Allocate weights matrix
-    float **G = (float**)malloc(n * sizeof(float*));
-    for (int i = 0; i < n; i++) {
-        G[i] = (float*)malloc(n * sizeof(float));
+    if (file_name == "") {
+        cout << "Please specify a filename by adding -f [FILE_NAME]" << endl;
+        return 0;
     }
 
-    // Read in weights matrix
-    float dist;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            cin >> G[i][j];
-        }
-    }
+    n = parse_matrix(file_name, G);
 
     // Allocate DP array
     float **C = (float**)malloc((1 << n) * sizeof(float*));
@@ -77,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     /*  Precompute last row of Pascal's triangle for values of n choose p
         in order to statically parallelize for loop in main computation */
-    int *T = pascals_triangle(n + 1);
+    vector<int> T = pascals_triangle(n + 1);
 
     // Allocate array to store sets (removes sequential dependency on S in for loop)
     unsigned int **sets = (unsigned int **)malloc(n * sizeof(unsigned int*));
@@ -152,21 +140,11 @@ int main(int argc, char *argv[]) {
     // Output optimal cost
     cout << "Tour cost = " << opt_cost << endl;
 
-    // Free memory and return
-    free(T);
-    for (int i = 0; i < n; i++) {
-        free(G[i]);
-    }
-    free(G);
+    // Free memory
     for (int i = 0; i < (1 << n); i++) {
         free(C[i]);
     }
     free(C);
 
-    clock_gettime(CLOCK_REALTIME, &end);
-    double exec_time;
-    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
-    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
-    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }

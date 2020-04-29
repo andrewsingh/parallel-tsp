@@ -1,15 +1,16 @@
-/*  Sequential Lin-Kernighan heuristic */
+/*  Parallel Lin-Kernighan heuristic */
 
 
 #include <vector>
 #include <set>
 #include <iostream>
 #include <algorithm>
+#include <random>
 #include <stdlib.h>
 #include <float.h>
 #include <assert.h>
 #include <math.h>
-#include <time.h>
+#include <omp.h>
 #include "../parse/parser.h"
 
 using namespace std;
@@ -20,6 +21,7 @@ bool is_matrix;
 int n;
 vector<vector<float> > G;
 vector<float> X, Y;
+
 
 
 // Returns the distance from node i to node j
@@ -164,7 +166,7 @@ void lk_move(int tour_start, vector<int> &tour) {
 /* A single run of the Lin-Kernighan algorithm with a random initial tour
     A tour is represented as an vector such that at city i, the next city to
     travel to is tour[i] */
-int lin_kernighan() {
+int lin_kernighan(int seed) {
     int diff;
     int old_dist = 0;
     int new_dist = 0;
@@ -173,7 +175,7 @@ int lin_kernighan() {
     for (int i = 0; i < n; i++) {
         perm[i] = i;
     }
-    random_shuffle(perm.begin(), perm.end());
+    shuffle(perm.begin(), perm.end(), default_random_engine(seed));
     vector<int> tour = vector<int>(n, 0);
     for (int i = 0; i < n - 1; i++) {
         tour[perm[i]] = perm[i + 1];
@@ -198,18 +200,22 @@ int lin_kernighan() {
     assert(is_tour(tour));
     return new_dist;
 }
-
+ 
 
 
 int main(int argc, char *argv[]) {
     string file_name = "";
-    int runs = 1;
+    int runs = 0;
+    int max_threads = omp_get_max_threads();
+    int num_threads = max_threads;
     for (int i = 0; i < argc; i++) {
         string arg(argv[i]);
         if (arg == "-f" && i + 1 < argc) {
             file_name = argv[i + 1];
         } else if (arg == "-r" && i + 1 < argc) {
             runs = atoi(argv[i + 1]);
+        } else if (arg == "-t" && i + 1 < argc) {
+            num_threads = atoi(argv[i + 1]);
         }
     }
 
@@ -225,31 +231,30 @@ int main(int argc, char *argv[]) {
         n = parse_euc_2d(file_name, X, Y);
     }
 
-    cout << runs << " runs" << endl;
+    if (runs == 0) {
+        runs = ceil((1080 * exp(-0.008 * n)) / (double)max_threads) * (double)max_threads;
+    }
 
-    // Parsing is done, start the timer
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
+    omp_set_num_threads(num_threads);
+    cout << "Running with " << num_threads << " threads" << endl;
+    cout << runs << " runs" << endl;
 
     // Run Lin-Kernighan 'runs' times and output the lowest cost
     float cost;
     float opt_cost = FLT_MAX;
-    for (int i = 0; i < runs; i++) {
-        cost = lin_kernighan();
-        if (cost < opt_cost) {
-            opt_cost = cost;
+    #pragma omp parallel 
+    {
+        int thread_num = omp_get_thread_num();
+        #pragma omp for schedule(static) reduction(min:opt_cost)
+        for (int i = 0; i < runs; i++) {
+            cost = lin_kernighan((thread_num + 1) * (i + 1));
+            if (cost < opt_cost) {
+                opt_cost = cost;
+            }
         }
     }
- 
+    
     // Output optimal cost
     cout << "Tour cost = " << opt_cost << endl;
-    
-    // Result has been printed, stop the timer
-    clock_gettime(CLOCK_REALTIME, &end);
-    // Calculate and print execution time
-    double exec_time;
-    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
-    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
-    cout << "Execution time: " << exec_time << " seconds" << endl;
     return 0;
 }
