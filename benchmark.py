@@ -26,7 +26,7 @@ algos_dict = {
     'hk': ("./code/held_karp/seq_hk", "./code/held_karp/par_hk"),
     'thk': ("./code/top_hk/seq_top_hk", "./code/top_hk/par_top_hk"),
     'lkh': ("./code/lin_kern/lin_kern", "./code/lin_kern/lin_kern"),
-    'gen': ("./code/genetic/seq_genetic", "./code/genetic/par_genetic")
+    'gen': ("./code/genetic/genetic", "./code/genetic/genetic")
 }
 
 default_process_counts_dict = { 'g': [8], 'l': [12], 'x' : [8] }
@@ -77,26 +77,23 @@ def outmsg(s, noreturn = False):
 
 
 def do_run(cmd_line):
-    tstart = datetime.datetime.now()
+    delta = 0
+    output = ""
     try:
         outmsg("Running '%s'" % cmd_line)
-        sim_process = subprocess.Popen(cmd_line, shell=True)
-        sim_process.wait()
-        return_code = sim_process.returncode
-        # Echo any results printed by simulator on stderr onto stdout
-        if sim_process.stderr is not None:
-            for line in sim_process.stderr:
-                outmsg(line)
+        tstart = datetime.datetime.now()
+        # Raises an error if return code is non-zero
+        output = subprocess.check_output(cmd_line, shell=True)
+        delta = datetime.datetime.now() - tstart
+        outmsg(output)
     except Exception as e:
         print "Execution of command '%s' failed. %s" % (cmd_line, e)
         return None
-    if return_code == 0:
-        delta = datetime.datetime.now() - tstart
-        secs = delta.seconds + 24 * 3600 * delta.days + 1e-6 * delta.microseconds
-        return secs
-    else:
-        print "Execution of command '%s' gave return code %d" % (cmd_line, return_code)
-        return None
+    
+    tour_cost = int(output.split("\n")[-2].split(" = ")[1])
+    secs = delta.seconds + 24 * 3600 * delta.days + 1e-6 * delta.microseconds
+    return (secs, tour_cost)
+
 
 
 def print_result():
@@ -142,7 +139,7 @@ def run_test(a):
     (seq, par) = algos_dict[a]
     seq_pre_list = [seq]
     par_pre_list = [par]
-    if a == "lkh":
+    if a in ["lkh", "gen"]:
         seq_pre_list.append("-t 1")
     if algo_args:
         # Append additional arguments for algorithm
@@ -167,14 +164,14 @@ def run_test(a):
         if run_seq:
             seq_cmd = " ".join(seq_pre_list + i_list)
             for j in range(run_count):
-                secs = do_run(seq_cmd)
+                (secs, _) = do_run(seq_cmd)
                 outmsg("Execution time: {} seconds".format(secs))
                 results_seq[a][i] = ((results_seq[a]).get(i, [])) + [secs]
                 outmsg("\n")
         if run_par:
             par_cmd = " ".join(par_pre_list + i_list)
             for j in range(run_count):
-                secs = do_run(par_cmd)
+                (secs, _) = do_run(par_cmd)
                 outmsg("Execution time: {} seconds".format(secs))
                 results_par[a][i] = ((results_par[a]).get(i, [])) + [secs]
                 outmsg("\n")
@@ -188,7 +185,7 @@ def run_scale(a):
     (seq, par) = algos_dict[a]
     seq_pre_list = [seq]
     par_pre_list = [par]
-    if a == "lkh":
+    if a in ["lkh", "gen"]:
         seq_pre_list.append("-t 1")
 
     #for i in test_instance_dict[a]:
@@ -200,7 +197,7 @@ def run_scale(a):
         avg = 0
         for j in range(run_count):
             outmsg("Run {}".format(j + 1))
-            secs = do_run(seq_cmd)
+            (secs, _) = do_run(seq_cmd)
             outmsg("{} seconds".format(secs))
             avg += secs
         avg /= run_count
@@ -213,7 +210,7 @@ def run_scale(a):
             avg = 0
             for j in range(run_count):
                 outmsg("Run {}".format(j + 1))
-                secs = do_run(par_cmd)
+                (secs, _) = do_run(par_cmd)
                 outmsg("{} seconds".format(secs))
                 avg += secs
             avg /= run_count
@@ -230,7 +227,7 @@ def run_scale(a):
 
 def run_eff():
     global algos_dict, algos_list, run_count, max_threads, instance_dict
-    instance_dict = test_instance_dict
+    #instance_dict = test_instance_dict
     results = [[""] + algos_list]
     
     for i in instance_dict["lkh"]:
@@ -247,7 +244,7 @@ def run_eff():
                 avg = 0
                 for j in range(run_count):
                     outmsg("Run {}".format(j + 1))
-                    secs = do_run(par_cmd)
+                    (secs, _) = do_run(par_cmd)
                     outmsg("{} seconds".format(secs))
                     avg += secs
                     outmsg("\n")
@@ -258,6 +255,35 @@ def run_eff():
 
     outmsg("Final results\n{}".format(results))
     with open("results/eff.csv", "ab+") as f:
+        writer = csv.writer(f)
+        writer.writerows(results)
+
+
+
+def run_acc():
+    global algos_dict, algos_list, run_count, max_threads, instance_dict
+    #instance_dict = test_instance_dict
+    results = [[""] + algos_list]
+    
+    for i in instance_dict["lkh"]:
+        outmsg("\nInstance {}".format(i))
+        i_list = ["-f", i]
+        results_row = [i.split(".")[0]]
+        for a in algos_list:
+            if i not in instance_dict[a]:
+                results_row.append("")
+            else:
+                outmsg("\nAlgorithm {}".format(a))
+                (_, par) = algos_dict[a]
+                par_cmd = " ".join([par, "-t", str(max_threads)] + i_list)
+                (secs, tour_cost) = do_run(par_cmd)
+                outmsg("{} seconds".format(secs))
+                outmsg("\n")
+                results_row.append(tour_cost)
+        results.append(results_row)
+
+    outmsg("Final results\n{}".format(results))
+    with open("results/acc.csv", "ab+") as f:
         writer = csv.writer(f)
         writer.writerows(results)
 
@@ -288,6 +314,8 @@ def run(name, args):
             run_scale(a)
     elif benchmark == "eff":
         run_eff()
+    elif benchmark == "acc":
+        run_acc()
     else:
         # Run the instances for each algorithm
         for a in algos_list:

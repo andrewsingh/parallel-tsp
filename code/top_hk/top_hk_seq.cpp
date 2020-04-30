@@ -83,9 +83,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
-
     unsigned S = 0; // initial set of vertices
     for (int i = 0; i < n; i++) {
         S |= (1 << i);
@@ -99,12 +96,6 @@ int main(int argc, char *argv[]) {
     }
 
     cout << "Tour cost = " << dp(S, 0, memo) << endl;
-
-    clock_gettime(CLOCK_REALTIME, &end);
-    double exec_time;
-    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
-    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
-    cout << "Execution time: " << exec_time << " seconds" << endl;
 
     return 0;
 }
