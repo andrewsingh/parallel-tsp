@@ -6,6 +6,7 @@ import sys
 import getopt
 import subprocess
 import datetime
+import csv
 
 
 
@@ -18,8 +19,9 @@ def usage(fname):
     print "    -f INSTANCE   Specify which instance to run (name of instance file, such as 'lin318.tsp')"
     print "    -r RUNS       Set number of times each instance is run"
     print "    -c ARGS       String of additional arguments to pass to the executable"
-    print "    -b BENCH      Specify a preset benchmark to run as one of 'scale', 'acc', or 'speed'"
     print "    -o OUTFILE    Create output file recording measurements"
+    print "    -b BENCH      Specify a preset benchmark to run as one of 'scale', 'acc', or 'eff'"
+    
     sys.exit(0)
 
 # General information
@@ -42,16 +44,17 @@ instance = None
 instance_dict = {
     'hk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
     'thk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
-    'lkh': ['st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp'],
-    'gen': ['st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp']
+    'lkh': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp'],
+    # 'gen': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp']
+    'gen': ['st70.tsp']
 }
 
 # For testing the benchmarks
 test_instance_dict = {
-    'hk': ['br17.mat'],
-    'thk': ['br17.mat'],
-    'lkh': ['st70.tsp'],
-    'gen': ['st70.tsp']
+    'hk': ['br17.mat', 'gr21.mat'],
+    'thk': ['br17.mat', 'gr21.mat'],
+    'lkh': ['br17.mat', 'st70.tsp'],
+    'gen': ['br17.mat', 'st70.tsp']
 }
 
 algos_list = algos_dict.keys()
@@ -61,6 +64,7 @@ benchmark = None
 algo_args = None
 impl = None
 thread_list = ["2", "4", "8"]
+max_threads = 8
 
 unique_id = ""
 
@@ -167,67 +171,113 @@ def run_test(a):
     for i in instances:
         i_list = ["-f", i]
         if run_seq:
+            seq_cmd = " ".join(seq_pre_list + i_list)
             for j in range(run_count):
-                seq_cmd = " ".join(seq_pre_list + i_list)
                 secs = do_run(seq_cmd)
                 outmsg("Execution time: %f seconds" % (secs))
                 results_seq[a][i] = ((results_seq[a]).get(i, [])) + [secs]
                 outmsg("\n")
         if run_par:
+            par_cmd = " ".join(par_pre_list + i_list)
             for j in range(run_count):
-                par_cmd = " ".join(par_pre_list + i_list)
                 secs = do_run(par_cmd)
                 outmsg("Execution time: %f seconds" % (secs))
                 results_par[a][i] = ((results_par[a]).get(i, [])) + [secs]
                 outmsg("\n")
 
 
-def run_scale():
-    global algos_dict, algos_list, run_count, thread_list
+
+def run_scale(a):
+    global algos_dict, algos_list, run_count, thread_list, instance_dict
+    outmsg("\nRunning scalability benchmark on %s" % (a))
     results = []
-    for a in algos_list:
-        outmsg("\nAlgo {}".format(a))
-        (seq, par) = algos_dict[a]
-        seq_pre_list = [seq]
-        par_pre_list = [par]
+    (seq, par) = algos_dict[a]
+    seq_pre_list = [seq]
+    par_pre_list = [par]
+    if a == "lkh":
         seq_pre_list.append("-t 1")
 
-        for i in test_instance_dict[a]:
-        #for i in instance_dict[a]:
-            outmsg("\nInstance {}".format(i))
-            i_list = ["-f", i]
-            avgs = []
+    #for i in test_instance_dict[a]:
+    for i in instance_dict[a]:
+        outmsg("\nInstance %s" % (i))
+        i_list = ["-f", i]
+        seq_cmd = " ".join(seq_pre_list + i_list)
+        avgs = []
+        avg = 0
+        for j in range(run_count):
+            outmsg("Run %d" % (j + 1))
+            secs = do_run(seq_cmd)
+            outmsg("%f seconds" % (secs))
+            avg += secs
+        avg /= run_count
+        avgs.append(round(avg, 4))
+        outmsg("AVERAGE: %f seconds\n" % (avg))
+       
+        for t in thread_list:
+            t_list = ["-t", t]
+            par_cmd = " ".join(par_pre_list + i_list + t_list)
             avg = 0
-            outmsg("\nSEQUENTIAL")
             for j in range(run_count):
-                outmsg("Run {}".format(j + 1))
-                seq_cmd = " ".join(seq_pre_list + i_list)
-                secs = do_run(seq_cmd)
-                outmsg("{} seconds".format(secs))
+                outmsg("Run %d" % (j + 1))
+                secs = do_run(par_cmd)
+                outmsg("%f seconds" % (secs))
                 avg += secs
-                outmsg("\n")
             avg /= run_count
             avgs.append(round(avg, 4))
-            outmsg("AVERAGE: {} seconds\n".format(avg))
-           
-            for t in thread_list:
-                t_list = ["-t", t]
+            outmsg("AVERAGE: %f seconds\n" % (avg))
+        results.append([a, i.split(".")[0]] + avgs)
+
+    results_str = ""
+    for r in results:
+        for i in r:
+            results_str += (str(i) + " ")
+        results_str += "\n"
+
+    outmsg("%s final results\n%s" % (a, results_str))
+    with open("results/scale.csv", "ab+") as f:
+        writer = csv.writer(f)
+        writer.writerows(results)
+
+
+
+def run_eff():
+    global algos_dict, algos_list, run_count, max_threads, instance_dict
+    instance_dict = test_instance_dict
+    results = [[""] + algos_list]
+    
+    for i in instance_dict["lkh"]:
+        outmsg("\nInstance %s" % (i))
+        i_list = ["-f", i]
+        results_row = [i.split(".")[0]]
+        for a in algos_list:
+            if i not in instance_dict[a]:
+                results_row.append("")
+            else:
+                outmsg("\nAlgorithm %s" % (a))
+                (_, par) = algos_dict[a]
+                par_cmd = " ".join([par, "-t", str(max_threads)] + i_list)
                 avg = 0
-                outmsg("\n{} THREADS".format(t))
                 for j in range(run_count):
-                    outmsg("Run {}".format(j + 1))
-                    par_cmd = " ".join(par_pre_list + i_list + t_list)
+                    outmsg("Run %d" % (j + 1))
                     secs = do_run(par_cmd)
-                    outmsg("{} seconds".format(secs))
+                    outmsg("%f seconds" % (secs))
                     avg += secs
                     outmsg("\n")
                 avg /= run_count
-                avgs.append(round(avg, 4))
-                outmsg("AVERAGE: {} seconds\n".format(avg))
-            results.append([a, i] + avgs)
+                outmsg("AVERAGE: %f seconds\n" % (avg))
+                results_row.append(round(avg, 4))
+        results.append(results_row)
 
-    outmsg("FINAL RESULTS\n{}".format(results))
+    results_str = ""
+    for r in results:
+        for i in r:
+            results_str += (str(i) + " ")
+        results_str += "\n"
 
+    outmsg("Final results\n %s" % (results_str))
+    with open("results/eff.csv", "ab+") as f:
+        writer = csv.writer(f)
+        writer.writerows(results)
 
 def generateFileName(template):
     global unique_id
@@ -258,6 +308,7 @@ def run(name, args):
     elif host[:8] == 'latedays' or host[:7] == 'compute':
         machine = 'l'
         doCheck = True
+        thread_list.append("12")
     else:
         outmsg("Warning: Host = '%s'. Can only get comparison results on GHC or Latedays machine" % host)
     processCounts = default_process_counts_dict[machine]
@@ -287,13 +338,15 @@ def run(name, args):
                 out_file = None
                 outmsg("Couldn't open output file '%s'" % fname)
     if benchmark == "scale":
-        run_scale()
+        for a in algos_list:
+            run_scale(a)
+    elif benchmark == "eff":
+        run_eff()
     else:
         # Run the instances for each algorithm
         for a in algos_list:
             run_test(a)
-
-    print_result()
+        print_result()
 
 
 if __name__ == "__main__":
