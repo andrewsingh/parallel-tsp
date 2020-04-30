@@ -92,8 +92,7 @@ int main(int argc, char *argv[]) {
     }
 
     cout << "Running with " << num_threads << " threads" << endl;
-
-
+    
     unsigned S = 0; // initial set of vertices
     for (int i = 0; i < n; i++) {
         S |= (1 << i);
