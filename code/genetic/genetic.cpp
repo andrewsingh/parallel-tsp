@@ -1,8 +1,12 @@
+/* Genetic Algorithm for Approximating TSP
+   Each individual represents a potential solution to the problem. With each
+   iteration, the individuls crossover and become more "fit", aka have shorter
+   lengths, until convergence or the max number of iterations */
+
 #include <iostream>
 #include <algorithm>
 #include <vector>
 #include <math.h>
-#include <assert.h>
 #include <random>
 #include <omp.h>
 #include "../parse/parser.h"
@@ -304,10 +308,7 @@ int main(int argc, char *argv[]) {
 
     cout << "Running with " << num_threads << " threads" << endl;
 
-    struct timespec start, end;
-    clock_gettime(CLOCK_REALTIME, &start);
-
-    // genetic algorithm
+    // Genetic algorithm
     population pop = generate_initial();
 
     while (!convergence(pop, n)) {
@@ -324,13 +325,17 @@ int main(int argc, char *argv[]) {
         pop.size -= 1;
     }
     
-    printf("Tour cost = %d\n", pop.ids[0].path_len);
+    // Find best solution in population
+    int best_tour = pop.ids[0].path_len;
+    if (pop.size > 1) {
+        for (int i = 1; i < pop.size; i++) {
+            if (pop.ids[i].path_len < best_tour) {
+                best_tour = pop.ids[i].path_len;
+            }
+        }
+    }
 
-    clock_gettime(CLOCK_REALTIME, &end);
-    double exec_time;
-    exec_time = (end.tv_sec - start.tv_sec) * 1e9; 
-    exec_time = (exec_time + (end.tv_nsec - start.tv_nsec)) * 1e-9;
-    cout << "Execution time: " << exec_time << " seconds" << endl;
+    printf("Tour cost = %d\n", best_tour);
 
     return 0;
 }
