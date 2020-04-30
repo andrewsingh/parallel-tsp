@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <vector>
 #include <math.h>
+#include <assert.h>
+#include <random>
 #include <omp.h>
 #include "../parse/parser.h"
 
@@ -52,14 +54,16 @@ population generate_initial() {
     population pop;
     pop.ids = (individual *)calloc(n, sizeof(individual));
     pop.pars = (parents *)calloc(n, sizeof(parents));
-    int all_visited = (1 << n) - 1;
 
     #pragma omp parallel for
     for (int i = 0; i < n; i++) {
         individual ind;
         vector<int> visited;
         // pick a random starting city
-        int c = rand() % n;
+        default_random_engine gen(omp_get_thread_num() * i);
+        uniform_int_distribution<int> distribution(0, n - 1);
+        gen.discard(10000);
+        int c = distribution(gen);
         int oc = c;
         ind.cities.push_back(c);
         visited.push_back(c);
@@ -73,7 +77,8 @@ population generate_initial() {
                     next.push_back(j);
                 }
             }
-            int nci = rand() % next.size();
+            uniform_int_distribution<int> dist_next(0, next.size() - 1);
+            int nci = dist_next(gen);
             int nc = next[nci];
             ind.cities.push_back(nc);
             length += dist(c, nc);
@@ -97,13 +102,10 @@ bool ind_compare (individual i, individual j) {
 }
 
 // After ranks assigned, do roulette selection with probabilities defined by ranks
-individual roulette_selection(population pop) {
-    individual last = pop.ids[pop.size - 1];
-    int max = last.offset + last.rank;
-    int rand_id = rand() % max;
+individual roulette_selection(population pop, int r) {
     individual curr = pop.ids[0];
     int i = 1;
-    while (curr.offset + curr.rank <= rand_id) {
+    while (curr.offset + curr.rank <= r) {
         curr = pop.ids[i];
         i++;
     }
@@ -121,22 +123,32 @@ void select_parents(population &pop) {
         offset += i + 1;
     }
 
+    individual last = pop.ids[pop.size - 1];
+    int max = last.offset + last.rank;
+
     // Use roulette selection to select pairs of parents
     #pragma omp parallel for
     for (int i = 0; i < pop.size - 1; i++) {
+        default_random_engine gen((i + 1) * (omp_get_thread_num() + 1) * pop.size);
+        uniform_int_distribution<int> distribution(0, max - 1);
+        gen.discard(10000);
+        int r1 = distribution(gen);
+        int r2 = distribution(gen);
         parents p;
-        p.p1 = roulette_selection(pop);
-        p.p2 = roulette_selection(pop);
+        p.p1 = roulette_selection(pop, r1);
+        p.p2 = roulette_selection(pop, r2);
         pop.pars[i] = p;
     }
 }
 
 // Given two parents, apply a greedy crossover method to create one new individaul
-individual crossover(individual &p1, individual &p2) {
+individual crossover(individual &p1, individual &p2, int seed) {
     individual ind;
-    int all_visited = (1 << n) - 1;
     // pick a random starting city
-    int c = rand() % n;
+    default_random_engine gen(seed);
+    uniform_int_distribution<int> distribution(0, n - 1);
+    gen.discard(10000);
+    int c = distribution(gen);
     int oc = c;
     ind.cities.push_back(c);
     vector<int> visited;
@@ -210,7 +222,8 @@ individual crossover(individual &p1, individual &p2) {
                     next.push_back(j);
                 }
             }
-            int nci = rand() % next.size();
+            uniform_int_distribution<int> dist_next(0, next.size() - 1);
+            int nci = dist_next(gen);
             int nc = next[nci];
             ind.cities.push_back(nc);
             length += dist(c, nc);
@@ -226,8 +239,11 @@ individual crossover(individual &p1, individual &p2) {
 }
 
 // mutate individual with a 2.1% probability
-void mutate(individual &i, int n) {
-    if (rand() % 1000 <= 21) {
+void mutate(individual &i, int n, int seed) {
+    default_random_engine gen(seed);
+    uniform_int_distribution<int> distribution(0, 999);
+    gen.discard(10000);
+    if (distribution(gen) % 1000 <= 21) {
         int i1 = rand() % n;
         int i2 = rand() % n;
         int tmp = i.cities[i2];
@@ -266,8 +282,8 @@ int main(int argc, char *argv[]) {
         if (arg == "-f" && i + 1 < argc) {
             file_name = argv[i + 1];
         }  else if (arg == "-t" && i + 1 < argc) {
-            omp_set_num_threads(num_threads);
             num_threads = atoi(argv[i + 1]);
+            omp_set_num_threads(num_threads);
         }
     }
 
@@ -289,9 +305,6 @@ int main(int argc, char *argv[]) {
     }
 
     cout << "Running with " << num_threads << " threads" << endl;
-    
-    // set random seed 
-    srand (time(NULL));
 
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
@@ -301,18 +314,19 @@ int main(int argc, char *argv[]) {
 
     while (!convergence(pop, n)) {
         select_parents(pop);
-
+ 
         pop.total_len = 0;
         #pragma omp parallel for
         for (int i = 0; i < pop.size - 1; i++) {
+            int seed = (omp_get_thread_num() + 1) * (i + 1);
             parents p = pop.pars[i];
-            individual ind = crossover(p.p1, p.p2);
-            mutate(ind, n);
+            individual ind = crossover(p.p1, p.p2, seed);
+            mutate(ind, n, seed);
             pop.ids[i] = ind;
         }
         pop.size -= 1;
     }
-
+    
     printf("Tour cost = %d\n", pop.ids[0].path_len);
 
     clock_gettime(CLOCK_REALTIME, &end);
