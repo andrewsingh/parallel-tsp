@@ -21,39 +21,48 @@ def usage(fname):
     sys.exit(0)
 
 # General information
-algosDict = {
+algos_dict = {
     'hk': ("./code/held_karp/seq_hk", "./code/held_karp/par_hk"),
     'thk': ("./code/top_hk/seq_top_hk", "./code/top_hk/par_top_hk"),
     'lkh': ("./code/lin_kern/lin_kern", "./code/lin_kern/lin_kern"),
     'gen': ("./code/genetic/seq_genetic", "./code/genetic/par_genetic")
 }
 
-defaultProcessCountsDict = { 'g': [8], 'l': [12], 'x' : [8] }
+default_process_counts_dict = { 'g': [8], 'l': [12], 'x' : [8] }
 
 # How many times does each benchmark get run?
-runCount = 1
+run_count = 5
 
-# Specific instance to be run, if None then run all instances for the algorithm in instanceDict
+# Specific instance to be run, if None then run all instances for the algorithm in instance_dict
 instance = None
 
 # Test cases by algorithm
-instanceDict = {
-    'hk': ['br17.mat', 'gr21.mat', 'gr24.mat'],
-    'thk': ['br17.mat', 'gr21.mat', 'gr24.mat'],
-    'lkh': ['lin105.tsp', 'a280.tsp', 'lin318.tsp'],
-    'gen': ['lin105.tsp', 'si175.mat', 'a280.tsp']
+instance_dict = {
+    'hk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
+    'thk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
+    'lkh': ['st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp'],
+    'gen': ['st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp']
 }
 
-algosList = algosDict.keys()
+# For testing the benchmarks
+test_instance_dict = {
+    'hk': ['br17.mat'],
+    'thk': ['br17.mat'],
+    'lkh': ['st70.tsp'],
+    'gen': ['st70.tsp']
+}
 
-outFile = None
+algos_list = algos_dict.keys()
+
+out_file = None
 benchmark = None
 algo_args = None
 impl = None
+thread_list = ["2", "4", "8"]
 
 # To store results to print at the end
-resultsSeq = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
-resultsPar = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
+results_seq = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
+results_par = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
 
 
 def outmsg(s, noreturn = False):
@@ -61,87 +70,88 @@ def outmsg(s, noreturn = False):
         s += "\n"
     sys.stdout.write(s)
     sys.stdout.flush()
-    if outFile != None:
-        outFile.write(s)
+    if out_file != None:
+        out_file.write(s)
 
 
-def doRun(cmdLine):
+def do_run(cmd_line):
     tstart = datetime.datetime.now()
     try:
-        outmsg("Running '%s'" % cmdLine)
-        simProcess = subprocess.Popen(cmdLine, shell=True)
-        simProcess.wait()
-        returnCode = simProcess.returncode
+        outmsg("Running '%s'" % cmd_line)
+        sim_process = subprocess.Popen(cmd_line, shell=True)
+        sim_process.wait()
+        return_code = sim_process.returncode
         # Echo any results printed by simulator on stderr onto stdout
-        if simProcess.stderr is not None:
-            for line in simProcess.stderr:
+        if sim_process.stderr is not None:
+            for line in sim_process.stderr:
                 outmsg(line)
     except Exception as e:
-        print "Execution of command '%s' failed. %s" % (cmdLine, e)
+        print "Execution of command '%s' failed. %s" % (cmd_line, e)
         return None
-    if returnCode == 0:
+    if return_code == 0:
         delta = datetime.datetime.now() - tstart
         secs = delta.seconds + 24 * 3600 * delta.days + 1e-6 * delta.microseconds
         return secs
     else:
-        print "Execution of command '%s' gave return code %d" % (cmdLine, returnCode)
+        print "Execution of command '%s' gave return code %d" % (cmd_line, return_code)
         return None
 
 
-def printResult():
-    global resultsSeq, resultsPar
+def print_result():
+    global results_seq, results_par
+    outmsg("============ FINAL RESULTS ============")
     if impl == "seq":
-        for a in resultsSeq.keys():
-            if resultsSeq[a] != {}:
+        for a in results_seq.keys():
+            if results_seq[a] != {}:
                 outmsg("Algorithm %s\n" % a)
-                for i in resultsSeq[a].keys():
-                    seqAvg = (sum(resultsSeq[a][i]) / len(resultsSeq[a][i]))
+                for i in results_seq[a].keys():
+                    seq_avg = (sum(results_seq[a][i]) / len(results_seq[a][i]))
                     outmsg("Instance %s\n" % i)
-                    outmsg("Sequential average: %0.3f seconds\n" % seqAvg)
+                    outmsg("Sequential average: %0.3f seconds\n" % seq_avg)
                     outmsg("\n")
                 outmsg("\n")
     elif impl == "par":
-        for a in resultsPar.keys():
-            if resultsPar[a] != {}:
+        for a in results_par.keys():
+            if results_par[a] != {}:
                 outmsg("Algorithm %s\n" % a)
-                for i in resultsPar[a].keys():
-                    parAvg = (sum(resultsPar[a][i]) / len(resultsPar[a][i]))
+                for i in results_par[a].keys():
+                    par_avg = (sum(results_par[a][i]) / len(results_par[a][i]))
                     outmsg("Instance %s\n" % i)
-                    outmsg("Parallel average: %0.3f seconds\n" % parAvg)
+                    outmsg("Parallel average: %0.3f seconds\n" % par_avg)
                     outmsg("\n")
                 outmsg("\n")
     else:
-        for a in resultsSeq.keys():
-            if resultsSeq[a] != {}:
+        for a in results_seq.keys():
+            if results_seq[a] != {}:
                 outmsg("Algorithm %s\n" % a)
-                for i in resultsSeq[a].keys():
-                    seqAvg = (sum(resultsSeq[a][i]) / len(resultsSeq[a][i]))
-                    parAvg = (sum(resultsPar[a][i]) / len(resultsPar[a][i]))
+                for i in results_seq[a].keys():
+                    seq_avg = (sum(results_seq[a][i]) / len(results_seq[a][i]))
+                    par_avg = (sum(results_par[a][i]) / len(results_par[a][i]))
                     outmsg("Instance %s\n" % i)
-                    outmsg("Sequential average: %0.3f seconds\n" % seqAvg)
-                    outmsg("Parallel average: %0.3f seconds\n" % parAvg)
-                    outmsg("Speedup: %0.3f\n" % (seqAvg / parAvg))
+                    outmsg("Sequential average: %0.3f seconds\n" % seq_avg)
+                    outmsg("Parallel average: %0.3f seconds\n" % par_avg)
+                    outmsg("Speedup: %0.3f\n" % (seq_avg / par_avg))
                     outmsg("\n")
                 outmsg("\n")
 
 
-def runTest(a):
-    global algosDict, instanceDict, resultsSeq, resultsPar, runCount, instance, algo_args, impl
-    (seq, par) = algosDict[a]
-    seq_preList = [seq]
-    par_preList = [par]
+def run_test(a):
+    global algos_dict, instance_dict, results_seq, results_par, run_count, instance, algo_args, impl
+    (seq, par) = algos_dict[a]
+    seq_pre_list = [seq]
+    par_pre_list = [par]
     if a == "lkh":
-        seq_preList.append("-t 1")
+        seq_pre_list.append("-t 1")
     if algo_args:
         # Append additional arguments for algorithm
-        seq_preList.append(algo_args)
-        par_preList.append(algo_args)
+        seq_pre_list.append(algo_args)
+        par_pre_list.append(algo_args)
     if instance:
         # Run the specified instance
         instances = [instance]
     else:
         # Run all instances in the dict for the specified algorithm
-        instances = instanceDict[a]
+        instances = instance_dict[a]
 
     run_seq = True
     run_par = True
@@ -153,43 +163,98 @@ def runTest(a):
     for i in instances:
         i_list = ["-f", i]
         if run_seq:
-            for j in range(runCount):
-                seq_cmd = " ".join(seq_preList + i_list)
-                secs = doRun(seq_cmd)
-                resultsSeq[a][i] = ((resultsSeq[a]).get(i, [])) + [secs]
+            for j in range(run_count):
+                seq_cmd = " ".join(seq_pre_list + i_list)
+                secs = do_run(seq_cmd)
+                outmsg("Execution time: {} seconds".format(secs))
+                results_seq[a][i] = ((results_seq[a]).get(i, [])) + [secs]
                 outmsg("\n")
         if run_par:
-            for j in range(runCount):
-                par_cmd = " ".join(par_preList + i_list)
-                secs = doRun(par_cmd)
-                resultsPar[a][i] = ((resultsPar[a]).get(i, [])) + [secs]
+            for j in range(run_count):
+                par_cmd = " ".join(par_pre_list + i_list)
+                secs = do_run(par_cmd)
+                outmsg("Execution time: {} seconds".format(secs))
+                results_par[a][i] = ((results_par[a]).get(i, [])) + [secs]
                 outmsg("\n")
+
+
+def run_scale():
+    global algos_dict, algos_list, run_count, thread_list
+    results = []
+    for a in algos_list:
+        outmsg("\nAlgo {}".format(a))
+        (seq, par) = algos_dict[a]
+        seq_pre_list = [seq]
+        par_pre_list = [par]
+        if a == "lkh":
+            seq_pre_list.append("-t 1")
+
+        for i in test_instance_dict[a]:
+        #for i in instance_dict[a]:
+            outmsg("\nInstance {}".format(i))
+            i_list = ["-f", i]
+            avgs = []
+            avg = 0
+            outmsg("\nSEQUENTIAL")
+            for j in range(run_count):
+                outmsg("Run {}".format(j + 1))
+                seq_cmd = " ".join(seq_pre_list + i_list)
+                secs = do_run(seq_cmd)
+                outmsg("{} seconds".format(secs))
+                avg += secs
+                outmsg("\n")
+            avg /= run_count
+            avgs.append(round(avg, 4))
+            outmsg("AVERAGE: {} seconds\n".format(avg))
+           
+            for t in thread_list:
+                t_list = ["-t", t]
+                avg = 0
+                outmsg("\n{} THREADS".format(t))
+                for j in range(run_count):
+                    outmsg("Run {}".format(j + 1))
+                    par_cmd = " ".join(par_pre_list + i_list + t_list)
+                    secs = do_run(par_cmd)
+                    outmsg("{} seconds".format(secs))
+                    avg += secs
+                    outmsg("\n")
+                avg /= run_count
+                avgs.append(round(avg, 4))
+                outmsg("AVERAGE: {} seconds\n".format(avg))
+            results.append([a, i] + avgs)
+
+    outmsg("FINAL RESULTS\n{}".format(results))
+
+
 
 
 def run(name, args):
-    global algosList, runCount, instance, algo_args, impl
-    optString = "ha:i:r:f:c:b:"
-    optlist, args = getopt.getopt(args, optString)
+    global algos_list, run_count, instance, algo_args, impl, benchmark
+    opt_string = "ha:i:r:f:c:b:"
+    optlist, args = getopt.getopt(args, opt_string)
     for (opt, val) in optlist:
         if (opt == '-h'):
             usage(name)
         elif (opt == '-a'):
-            algosList = [val]
+            algos_list = [val]
         elif (opt == '-i'):
             impl = val
         elif (opt == '-r'):
-            runCount = int(val)
+            run_count = int(val)
         elif (opt == '-f'):
             instance = val
         elif (opt == '-c'):
             algo_args = val
         elif (opt == '-b'):
             benchmark = val
-    # Run the instances for each algorithm
-    for a in algosList:
-        runTest(a)
+    if benchmark == "scale":
+        run_scale()
+    else:
+        # Run the instances for each algorithm
+        for a in algos_list:
+            run_test(a)
 
-    printResult()
+    print_result()
 
 
 if __name__ == "__main__":
