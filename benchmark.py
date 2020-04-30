@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import os
+import os.path
 import sys
 import getopt
 import subprocess
@@ -17,15 +19,15 @@ def usage(fname):
     print "    -r RUNS       Set number of times each instance is run"
     print "    -c ARGS       String of additional arguments to pass to the executable"
     print "    -b BENCH      Specify a preset benchmark to run as one of 'scale', 'acc', or 'speed'"
-    
+    print "    -o OUTFILE    Create output file recording measurements"
     sys.exit(0)
 
 # General information
 algos_dict = {
-    'hk': ("./code/held_karp/seq_hk", "./code/held_karp/par_hk"),
-    'thk': ("./code/top_hk/seq_top_hk", "./code/top_hk/par_top_hk"),
+    'hk': ("./code/held_karp/par_hk", "./code/held_karp/par_hk"),
+    'thk': ("./code/top_hk/par_top_hk", "./code/top_hk/par_top_hk"),
     'lkh': ("./code/lin_kern/lin_kern", "./code/lin_kern/lin_kern"),
-    'gen': ("./code/genetic/seq_genetic", "./code/genetic/par_genetic")
+    'gen': ("./code/genetic/genetic", "./code/genetic/genetic")
 }
 
 default_process_counts_dict = { 'g': [8], 'l': [12], 'x' : [8] }
@@ -59,6 +61,8 @@ benchmark = None
 algo_args = None
 impl = None
 thread_list = ["2", "4", "8"]
+
+unique_id = ""
 
 # To store results to print at the end
 results_seq = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
@@ -110,6 +114,7 @@ def print_result():
                     outmsg("Sequential average: %0.3f seconds\n" % seq_avg)
                     outmsg("\n")
                 outmsg("\n")
+
     elif impl == "par":
         for a in results_par.keys():
             if results_par[a] != {}:
@@ -140,8 +145,7 @@ def run_test(a):
     (seq, par) = algos_dict[a]
     seq_pre_list = [seq]
     par_pre_list = [par]
-    if a == "lkh":
-        seq_pre_list.append("-t 1")
+    seq_pre_list.append("-t 1")
     if algo_args:
         # Append additional arguments for algorithm
         seq_pre_list.append(algo_args)
@@ -166,14 +170,14 @@ def run_test(a):
             for j in range(run_count):
                 seq_cmd = " ".join(seq_pre_list + i_list)
                 secs = do_run(seq_cmd)
-                outmsg("Execution time: {} seconds".format(secs))
+                outmsg("Execution time: %f seconds" % (secs))
                 results_seq[a][i] = ((results_seq[a]).get(i, [])) + [secs]
                 outmsg("\n")
         if run_par:
             for j in range(run_count):
                 par_cmd = " ".join(par_pre_list + i_list)
                 secs = do_run(par_cmd)
-                outmsg("Execution time: {} seconds".format(secs))
+                outmsg("Execution time: %f seconds" % (secs))
                 results_par[a][i] = ((results_par[a]).get(i, [])) + [secs]
                 outmsg("\n")
 
@@ -186,8 +190,7 @@ def run_scale():
         (seq, par) = algos_dict[a]
         seq_pre_list = [seq]
         par_pre_list = [par]
-        if a == "lkh":
-            seq_pre_list.append("-t 1")
+        seq_pre_list.append("-t 1")
 
         for i in test_instance_dict[a]:
         #for i in instance_dict[a]:
@@ -226,11 +229,40 @@ def run_scale():
     outmsg("FINAL RESULTS\n{}".format(results))
 
 
-
+def generateFileName(template):
+    global unique_id
+    myId = ""
+    n = len(template)
+    ls = []
+    for i in range(n):
+        c = template[i]
+        if c == 'X':
+            c = chr(random.randint(ord('0'), ord('9')))
+        ls.append(c)
+        myId += c
+    if unique_id == "":
+        unique_id = myId
+    return "".join(ls) 
 
 def run(name, args):
-    global algos_list, run_count, instance, algo_args, impl, benchmark
-    opt_string = "ha:i:r:f:c:b:"
+    global algos_list, run_count, instance, algo_args, impl, benchmark, out_file
+    # Figure out which machine we're running on, adjust number of threads accordingly
+    machine = 'x'
+    try:
+        host = os.environ['HOSTNAME']
+    except:
+        host = ''
+    if host[:3] == 'ghc' or host[:4] == 'unix':
+        machine = 'g'
+        doCheck = True
+    elif host[:8] == 'latedays' or host[:7] == 'compute':
+        machine = 'l'
+        doCheck = True
+    else:
+        outmsg("Warning: Host = '%s'. Can only get comparison results on GHC or Latedays machine" % host)
+    processCounts = default_process_counts_dict[machine]
+
+    opt_string = "ha:i:r:f:c:b:o:"
     optlist, args = getopt.getopt(args, opt_string)
     for (opt, val) in optlist:
         if (opt == '-h'):
@@ -247,6 +279,13 @@ def run(name, args):
             algo_args = val
         elif (opt == '-b'):
             benchmark = val
+        elif opt == '-o':
+            fname = generateFileName(val)
+            try:
+                out_file = open(fname, "w")
+            except Exception as e:
+                out_file = None
+                outmsg("Couldn't open output file '%s'" % fname)
     if benchmark == "scale":
         run_scale()
     else:

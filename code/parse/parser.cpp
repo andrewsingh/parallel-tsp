@@ -4,9 +4,18 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <filesystem>
+#include <unistd.h>
+
+#define GetCurrentDir getcwd
 
 using namespace std;
+
+std::string get_current_dir() {
+   char buff[FILENAME_MAX]; //create string buffer to hold path
+   GetCurrentDir( buff, FILENAME_MAX );
+   string current_working_dir(buff);
+   return current_working_dir;
+}
 
 // Parses distance matrix of file_name into G and returns number of nodes n
 int parse_matrix(string file_name, vector<vector<float> > &G) {
@@ -14,7 +23,7 @@ int parse_matrix(string file_name, vector<vector<float> > &G) {
     string str;
     int n;
 
-    if (((filesystem::current_path()).string()).find("code") != string::npos) {
+    if ((get_current_dir()).find("code") != string::npos) {
         instance.open("../../instances/matrix/" + file_name, ios::in);
     } else{
         // for benchmarking to be able to parse files too
@@ -38,7 +47,7 @@ int parse_euc_2d(string file_name, vector<float> &X, vector<float> &Y) {
     int n;
     float xi, yi;
 
-    if (((filesystem::current_path()).string()).find("code") != string::npos) {
+    if ((get_current_dir()).find("code") != string::npos) {
         instance.open("../../instances/euc2d/" + file_name, ios::in);
     } else{
         // for benchmarking to be able to parse files too
