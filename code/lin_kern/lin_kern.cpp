@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (runs == 0) {
-        runs = ceil((1080 * exp(-0.008 * n)) / (double)max_threads) * (double)max_threads;
+        runs = ceil(1721 * pow(n, -0.74) / (double)max_threads) * (double)max_threads;
     }
 
     omp_set_num_threads(num_threads);
@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
         int thread_num = omp_get_thread_num();
         #pragma omp for schedule(static) reduction(min:opt_cost)
         for (int i = 0; i < runs; i++) {
-            cost = lin_kernighan((thread_num + 1) * (i + 1));
+            cost = lin_kernighan(i);
             if (cost < opt_cost) {
                 opt_cost = cost;
             }
