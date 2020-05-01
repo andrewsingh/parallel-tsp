@@ -1,5 +1,6 @@
-/*  Parallel Lin-Kernighan heuristic */
-
+/*  Parallel Lin-Kernighan heuristic 
+    Uses code from https://github.com/lingz/LK-Heuristic
+*/
 
 #include <vector>
 #include <set>
