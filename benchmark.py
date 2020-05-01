@@ -195,7 +195,14 @@ def run_scale(a):
     if a in ["lkh", "gen"]:
         seq_pre_list.append("-t 1")
 
-    for i in instance_dict[a]:
+    # To run scaling for specific instances
+    run_instances = []
+    if instance != None:
+        run_instances = [instance]
+    else:
+        run_instances = instance_dict[a].keys()
+
+    for i in run_instances:
         outmsg("\nInstance %s" % (i))
         i_list = ["-f", i]
         seq_cmd = " ".join(seq_pre_list + i_list)
