@@ -12,6 +12,7 @@ import csv
 
 def usage(fname):
     ustring = "Usage: %s [-h] [-a ALGORITHM] [-r RUNS]" % fname
+<<<<<<< HEAD
     print ustring
     print "    -h            Print this message"
     print "    -a ALGORITHM  Specify which algorithm to run as one of 'hk', 'thk', 'lkh', or 'gen'"
@@ -21,6 +22,16 @@ def usage(fname):
     print "    -c ARGS       String of additional arguments to pass to the executable"
     print "    -o OUTFILE    Create output file recording measurements"
     print "    -b BENCH      Specify a preset benchmark to run as one of 'scale', 'acc', or 'eff'"
+=======
+    print(ustring)
+    print("    -h            Print this message")
+    print("    -a ALGORITHM  Specify which algorithm to run as one of 'hk', 'thk', 'lkh', or 'gen'")
+    print("    -i IMPLEMENT  Specify which implementation to run as one of 'seq' or 'par'")
+    print("    -f INSTANCE   Specify which instance to run (name of instance file, such as 'lin318.tsp')")
+    print("    -r RUNS       Set number of times each instance is run")
+    print("    -c ARGS       String of additional arguments to pass to the executable")
+    print("    -b BENCH      Specify a preset benchmark to run as one of 'scale', 'acc', or 'eff'")
+>>>>>>> andrew
     
     sys.exit(0)
 
@@ -57,7 +68,7 @@ test_instance_dict = {
     'gen': ['br17.mat', 'st70.tsp']
 }
 
-algos_list = algos_dict.keys()
+algos_list = list(algos_dict.keys())
 
 out_file = None
 benchmark = None
@@ -66,9 +77,13 @@ impl = None
 thread_list = ["2", "4", "8"]
 max_threads = 8
 
+<<<<<<< HEAD
 unique_id = ""
 
 # To store results to print at the end
+=======
+# To store results to print(at the end)
+>>>>>>> andrew
 results_seq = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
 results_par = {'hk': {}, 'thk': {}, 'lkh': {}, 'gen': {}}
 
@@ -89,15 +104,17 @@ def do_run(cmd_line):
         outmsg("Running '%s'" % cmd_line)
         tstart = datetime.datetime.now()
         # Raises an error if return code is non-zero
-        output = subprocess.check_output(cmd_line, shell=True)
+        output = subprocess.run(cmd_line, stdout=subprocess.PIPE, shell=True).stdout.decode('utf-8')
+        #output = subprocess.check_output(cmd_line, shell=True)
         delta = datetime.datetime.now() - tstart
         outmsg(output)
     except Exception as e:
-        print "Execution of command '%s' failed. %s" % (cmd_line, e)
+        print("Execution of command '%s' failed. %s" % (cmd_line, e))
         return None
     
     tour_cost = int(output.split("\n")[-2].split(" = ")[1])
     secs = delta.seconds + 24 * 3600 * delta.days + 1e-6 * delta.microseconds
+    outmsg("{} seconds".format(round(secs, 4)))
     return (secs, tour_cost)
 
 
@@ -171,14 +188,20 @@ def run_test(a):
             seq_cmd = " ".join(seq_pre_list + i_list)
             for j in range(run_count):
                 (secs, _) = do_run(seq_cmd)
+<<<<<<< HEAD
                 outmsg("Execution time: %f seconds" % (secs))
+=======
+>>>>>>> andrew
                 results_seq[a][i] = ((results_seq[a]).get(i, [])) + [secs]
                 outmsg("\n")
         if run_par:
             par_cmd = " ".join(par_pre_list + i_list)
             for j in range(run_count):
                 (secs, _) = do_run(par_cmd)
+<<<<<<< HEAD
                 outmsg("Execution time: %f seconds" % (secs))
+=======
+>>>>>>> andrew
                 results_par[a][i] = ((results_par[a]).get(i, [])) + [secs]
                 outmsg("\n")
 
@@ -186,7 +209,13 @@ def run_test(a):
 
 def run_scale(a):
     global algos_dict, algos_list, run_count, thread_list, instance_dict
+<<<<<<< HEAD
     outmsg("\nRunning scalability benchmark on %s" % (a))
+=======
+    #instance_dict = test_instance_dict
+
+    outmsg("\nAlgorithm {}".format(a))
+>>>>>>> andrew
     results = []
     (seq, par) = algos_dict[a]
     seq_pre_list = [seq]
@@ -194,7 +223,6 @@ def run_scale(a):
     if a in ["lkh", "gen"]:
         seq_pre_list.append("-t 1")
 
-    #for i in test_instance_dict[a]:
     for i in instance_dict[a]:
         outmsg("\nInstance %s" % (i))
         i_list = ["-f", i]
@@ -204,11 +232,18 @@ def run_scale(a):
         for j in range(run_count):
             outmsg("Run %d" % (j + 1))
             (secs, _) = do_run(seq_cmd)
+<<<<<<< HEAD
             outmsg("%f seconds" % (secs))
             avg += secs
         avg /= run_count
         avgs.append(round(avg, 4))
         outmsg("AVERAGE: %f seconds\n" % (avg))
+=======
+            avg += secs
+        avg = round(avg / run_count, 4)
+        avgs.append(avg)
+        outmsg("AVERAGE: {} seconds\n".format(avg))
+>>>>>>> andrew
        
         for t in thread_list:
             t_list = ["-t", t]
@@ -217,6 +252,7 @@ def run_scale(a):
             for j in range(run_count):
                 outmsg("Run %d" % (j + 1))
                 (secs, _) = do_run(par_cmd)
+<<<<<<< HEAD
                 outmsg("%f seconds" % (secs))
                 avg += secs
             avg /= run_count
@@ -232,6 +268,16 @@ def run_scale(a):
 
     outmsg("%s final results\n%s" % (a, results_str))
     with open("results/scale.csv", "ab+") as f:
+=======
+                avg += secs
+            avg = round(avg / run_count, 4)
+            avgs.append(avg)
+            outmsg("AVERAGE: {} seconds\n".format(avg))
+        results.append([a, i.split(".")[0]] + avgs)
+
+    outmsg("{} final results\n{}".format(a, results))
+    with open("results/scale.csv", "a+", newline="") as f:
+>>>>>>> andrew
         writer = csv.writer(f)
         writer.writerows(results)
 
@@ -240,6 +286,7 @@ def run_scale(a):
 def run_eff():
     global algos_dict, algos_list, run_count, max_threads, instance_dict
     #instance_dict = test_instance_dict
+
     results = [[""] + algos_list]
     
     for i in instance_dict["lkh"]:
@@ -257,6 +304,7 @@ def run_eff():
                 for j in range(run_count):
                     outmsg("Run %d" % (j + 1))
                     (secs, _) = do_run(par_cmd)
+<<<<<<< HEAD
                     outmsg("%f seconds" % (secs))
                     avg += secs
                     outmsg("\n")
@@ -273,6 +321,17 @@ def run_eff():
 
     outmsg("Final results\n %s" % (results_str))
     with open("results/eff.csv", "ab+") as f:
+=======
+                    avg += secs
+                    outmsg("\n")
+                avg = round(avg / run_count, 4)
+                outmsg("AVERAGE: {} seconds\n".format(avg))
+                results_row.append(avg)
+        results.append(results_row)
+
+    outmsg("Final results\n{}".format(results))
+    with open("results/eff.csv", "a+", newline="") as f:
+>>>>>>> andrew
         writer = csv.writer(f)
         writer.writerows(results)
 
@@ -294,6 +353,7 @@ def generateFileName(template):
 def run_acc():
     global algos_dict, algos_list, run_count, max_threads, instance_dict
     #instance_dict = test_instance_dict
+
     results = [[""] + algos_list]
     
     for i in instance_dict["lkh"]:
@@ -308,13 +368,12 @@ def run_acc():
                 (_, par) = algos_dict[a]
                 par_cmd = " ".join([par, "-t", str(max_threads)] + i_list)
                 (secs, tour_cost) = do_run(par_cmd)
-                outmsg("{} seconds".format(secs))
                 outmsg("\n")
                 results_row.append(tour_cost)
         results.append(results_row)
 
     outmsg("Final results\n{}".format(results))
-    with open("results/acc.csv", "ab+") as f:
+    with open("results/acc.csv", "a+", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(results)
 
