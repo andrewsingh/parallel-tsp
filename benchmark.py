@@ -44,8 +44,8 @@ instance = None
 instance_dict = {
     'hk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
     'thk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
-    'lkh': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp'],
-    'gen': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'kroA200.tsp']
+    'lkh': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'si175.mat', 'kroA200.tsp'],
+    'gen': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'si175.mat', 'kroA200.tsp']
 }
 
 # For testing the benchmarks
