@@ -8,13 +8,13 @@ import random
 # Program to format a benchmark run and submit it to the latedays job queue
 
 def usage(name):
-    print "Usage: %s -h -J -s NAME -a ARGS -r ROOT -d DIGITS"
-    print "  -h         Print this message"
-    print "  -J         Don't submit job (just generate command file)"
-    print "  -s NAME    Specify command name"
-    print "  -a ARGS    Arguments for benchmark.py (can be quoted string)"
-    print "  -r ROOT    Specify root name of benchmark output file"
-    print "  -d DIGITS  Specify number of randomly generated digits in command and benchmark output file names"
+    print ("Usage: %s -h -J -s NAME -a ARGS -r ROOT -d DIGITS")
+    print ("  -h         Print this message")
+    print ("  -J         Don't submit job (just generate command file)")
+    print ("  -s NAME    Specify command name")
+    print ("  -a ARGS    Arguments for benchmark.py (can be quoted string)")
+    print ("  -r ROOT    Specify root name of benchmark output file")
+    print ("  -d DIGITS  Specify number of randomly generated digits in command and benchmark output file names")
     sys.exit(0)
 
 uniqueId = ""
@@ -38,7 +38,7 @@ def generateScript(scriptName = "latedays.sh", argString = "", outputName = "ben
     try:
         scriptFile = open(scriptName, 'w')
     except Exception as e:
-        print "Couldn't open file '%s' (%s)" % (scriptName, str(e))
+        print ("Couldn't open file '%s' (%s)") % (scriptName, str(e))
         return False
     argString += " -o " + outputName
     
@@ -60,7 +60,7 @@ def generateScript(scriptName = "latedays.sh", argString = "", outputName = "ben
     scriptFile.write("cd $PBS_O_WORKDIR\n")    
     scriptFile.write("\n")    
     scriptFile.write("# Execute the performance evaluation program and store summary in %s\n" % outputName)
-    scriptFile.write("./benchmark.py %s\n" % argString)
+    scriptFile.write("python3 ./benchmark.py %s\n" % argString)
     scriptFile.close()
     return True
 
@@ -70,11 +70,11 @@ def submit(scriptName):
     try:
         process = subprocess.Popen(cmd)
     except Exception as e:
-        print "Couldn't execute '%s' (%s)" % (cmdline, str(e))
+        print ("Couldn't execute '%s' (%s)" % (cmdline, str(e)))
         return
     process.wait()
     if process.returncode != 0:
-        print "Error.  Executing '%s' gave return code %d" % (cmdline, process.returncode)
+        print ("Error.  Executing '%s' gave return code %d" % (cmdline, process.returncode))
 
 def run(name, args):
     global uniqueId
@@ -100,7 +100,7 @@ def run(name, args):
         elif opt == '-d':
             digits = int(val)
     if argString == "":
-        print "Must specify args to benchmark, at least the algorithm to test"
+        print ("Must specify args to benchmark, at least the algorithm to test")
         return 1
     uniqueId = generateId(digits)
     scriptName = generateFileName(scriptRoot, scriptExtension)
@@ -108,7 +108,7 @@ def run(name, args):
     if digits > 0:
         argString += " -i %s" % uniqueId
     if generateScript(scriptName, argString, outputName):
-        print "Generated script %s" % scriptName
+        print ("Generated script %s" % scriptName)
         if submitJob:
             submit(scriptName)
 
