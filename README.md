@@ -7,11 +7,10 @@ To test one of the algorithms, first run the make script.
 ./makeall.sh
 ```
 
-Then run the algorithn through the benchmark script.
+Then run the algorithm through the benchmark script.
 ```
 python3 ./benchmark.py -args
 ``` 
-
-Running the benchmark script with the `-h` flag lists the different command line options for running a benchmark.
+Running the benchmark script with the `-h` flag lists the different command line options for benchmarking.
 
 
