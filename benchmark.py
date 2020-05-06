@@ -26,8 +26,8 @@ def usage(fname):
 
 # General information
 algos_dict = {
-    'hk': ("./code/held_karp/par_hk", "./code/held_karp/par_hk"),
-    'thk': ("./code/top_hk/par_top_hk", "./code/top_hk/par_top_hk"),
+    'hk': ("./code/held_karp/seq_hk", "./code/held_karp/par_hk"),
+    #'thk': ("./code/top_hk/par_top_hk", "./code/top_hk/par_top_hk"),
     'lkh': ("./code/lin_kern/lin_kern", "./code/lin_kern/lin_kern"),
     'gen': ("./code/genetic/genetic", "./code/genetic/genetic")
 }
@@ -43,7 +43,7 @@ instance = None
 # Test cases by algorithm
 instance_dict = {
     'hk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
-    'thk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
+    #'thk': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat'],
     'lkh': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'si175.mat', 'kroA200.tsp'],
     'gen': ['br17.mat', 'gr21.mat', 'gr24.mat', 'fri26.mat', 'st70.tsp', 'lin105.tsp', 'u159.tsp', 'si175.mat', 'kroA200.tsp']
 }
@@ -51,7 +51,7 @@ instance_dict = {
 # For testing the benchmarks
 test_instance_dict = {
     'hk': ['br17.mat', 'gr21.mat'],
-    'thk': ['br17.mat', 'gr21.mat'],
+    #'thk': ['br17.mat', 'gr21.mat'],
     'lkh': ['br17.mat', 'st70.tsp'],
     'gen': ['br17.mat', 'st70.tsp']
 }
@@ -186,9 +186,10 @@ def run_test(a):
 def run_scale(a):
     global algos_dict, algos_list, run_count, thread_list, instance_dict
     #instance_dict = test_instance_dict
+    outmsg("thread_list = {}".format(thread_list))
+    results = []
 
     outmsg("\nAlgorithm {}".format(a))
-    results = []
     (seq, par) = algos_dict[a]
     seq_pre_list = [seq]
     par_pre_list = [par]
@@ -200,10 +201,12 @@ def run_scale(a):
     if instance != None:
         run_instances = [instance]
     else:
-        run_instances = instance_dict[a].keys()
+        run_instances = instance_dict[a]
 
     for i in run_instances:
-        outmsg("\nInstance %s" % (i))
+        if a == 'hk' and i == 'fri26.mat':
+            run_count = 2
+        outmsg("\nInstance {}".format(i))
         i_list = ["-f", i]
         seq_cmd = " ".join(seq_pre_list + i_list)
         avgs = []
@@ -215,7 +218,7 @@ def run_scale(a):
         avg = round(avg / run_count, 4)
         avgs.append(avg)
         outmsg("AVERAGE: {} seconds\n".format(avg))
-       
+    
         for t in thread_list:
             t_list = ["-t", t]
             par_cmd = " ".join(par_pre_list + i_list + t_list)
@@ -230,7 +233,7 @@ def run_scale(a):
         results.append([a, i.split(".")[0]] + avgs)
 
     outmsg("{} final results\n{}".format(a, results))
-    with open("results/scale.csv", "a+", newline="") as f:
+    with open("results/scale_{}.csv".format(a), "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(results)
 
@@ -239,7 +242,7 @@ def run_scale(a):
 def run_eff():
     global algos_dict, algos_list, run_count, max_threads, instance_dict
     #instance_dict = test_instance_dict
-
+    outmsg("max_threads = {}".format(max_threads))
     results = [[""] + algos_list]
     
     for i in instance_dict["lkh"]:
@@ -265,29 +268,16 @@ def run_eff():
         results.append(results_row)
 
     outmsg("Final results\n{}".format(results))
-    with open("results/eff.csv", "a+", newline="") as f:
+    with open("results/eff.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(results)
 
-def generateFileName(template):
-    global unique_id
-    myId = ""
-    n = len(template)
-    ls = []
-    for i in range(n):
-        c = template[i]
-        if c == 'X':
-            c = chr(random.randint(ord('0'), ord('9')))
-        ls.append(c)
-        myId += c
-    if unique_id == "":
-        unique_id = myId
-    return "".join(ls) 
+
 
 def run_acc():
     global algos_dict, algos_list, run_count, max_threads, instance_dict
     #instance_dict = test_instance_dict
-
+    outmsg("max_threads = {}".format(max_threads))
     results = [[""] + algos_list]
     
     for i in instance_dict["lkh"]:
@@ -307,14 +297,29 @@ def run_acc():
         results.append(results_row)
 
     outmsg("Final results\n{}".format(results))
-    with open("results/acc.csv", "a+", newline="") as f:
+    with open("results/acc.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(results)
 
 
+def generateFileName(template):
+    global unique_id
+    myId = ""
+    n = len(template)
+    ls = []
+    for i in range(n):
+        c = template[i]
+        if c == 'X':
+            c = chr(random.randint(ord('0'), ord('9')))
+        ls.append(c)
+        myId += c
+    if unique_id == "":
+        unique_id = myId
+    return "".join(ls) 
+
 
 def run(name, args):
-    global algos_list, run_count, instance, algo_args, impl, benchmark, out_file
+    global algos_list, run_count, instance, algo_args, impl, benchmark, out_file, max_threads, thread_list
     # Figure out which machine we're running on, adjust number of threads accordingly
     machine = 'x'
     try:
@@ -328,6 +333,7 @@ def run(name, args):
         machine = 'l'
         doCheck = True
         thread_list.append("12")
+        max_threads = 12
     else:
         outmsg("Warning: Host = '%s'. Can only get comparison results on GHC or Latedays machine" % host)
     processCounts = default_process_counts_dict[machine]
