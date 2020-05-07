@@ -6,6 +6,7 @@ import getopt
 import random
 
 # Program to format a benchmark run and submit it to the latedays job queue
+# based on submitjob script distributed with Assignment4
 
 def usage(name):
     print ("Usage: %s -h -J -s NAME -a ARGS -r ROOT -d DIGITS")

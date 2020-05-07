@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Program to run benchmarking cases for accuracy, scale, and efficiency, and save results
+# based on benchmark script distributed with Assignment4
+
 import os
 import os.path
 import sys
