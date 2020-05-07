@@ -58,7 +58,7 @@ population generate_initial() {
     pop.ids = (individual *)calloc(n, sizeof(individual));
     pop.pars = (parents *)calloc(n, sizeof(parents));
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < n; i++) {
         individual ind;
         vector<int> visited;
@@ -129,7 +129,7 @@ void select_parents(population &pop) {
     int max = last.offset + last.rank;
 
     // Use roulette selection to select pairs of parents
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < pop.size - 1; i++) {
         default_random_engine gen((i + 1) * (omp_get_thread_num() + 1) * pop.size);
         uniform_int_distribution<int> distribution(0, max - 1);
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
     while (!convergence(pop, n)) {
         select_parents(pop);
  
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < pop.size - 1; i++) {
             int seed = (omp_get_thread_num() + 1) * (i + 1);
             parents p = pop.pars[i];

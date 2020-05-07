@@ -11,6 +11,7 @@ bool is_matrix;
 int n;
 vector<vector<float> > G;
 vector<float> X, Y;
+int **memo;
 
 // Returns the distance from node i to node j
 float dist(int i, int j) {
@@ -25,7 +26,7 @@ float dist(int i, int j) {
 }
 
 // Subset dp to solve for shortest non simple TSP path
-int dp(int S, int v, int **memo) {
+int dp(int S, int v) {
     // We've already solved this subproblem
     if (memo[S][v] != -1) {
         return memo[S][v];
@@ -44,7 +45,7 @@ int dp(int S, int v, int **memo) {
     #pragma omp parallel for
     for (int u = 0; u < n; u++) {
         if (u != v && (S >> u & 1 == 1)) {
-            val = dp(S & ~(1 << (v)), u, memo) + dist(u, v);
+            val = dp(S & ~(1 << (v)), u) + dist(u, v);
             if (first || minval >= val) {
                 minval = val;
                 minprev = u;
@@ -99,14 +100,14 @@ int main(int argc, char *argv[]) {
     }
 
     // Set up tables and solve tsp with subset dp
-    int **memo = (int **)malloc(S * sizeof(int*));
+    memo = (int **)malloc(S * sizeof(int*));
     #pragma omp parallel for
     for (int i = 0; i < S + 1; i++) {
         memo[i] = (int*)malloc(n * sizeof(int));
         memset(memo[i], -1, n * sizeof(int));
     }
 
-    cout << "Tour cost = " << dp(S, 0, memo) << endl;
+    cout << "Tour cost = " << dp(S, 0) << endl;
 
     return 0;
 }
