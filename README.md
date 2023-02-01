@@ -1,5 +1,5 @@
 # Parallel Algorithms for the Traveling Salesperson Problem
-Final project for Carnegie Mellon's 15-418 Parallel Computer Architecture and Programming class. [Project report](http://www.andrew.cmu.edu/user/andrewsi/15_418_Project_Final_Report.pdf).
+Final project for Carnegie Mellon's 15-418 Parallel Computer Architecture and Programming class. [Project report](https://github.com/andrewsingh/parallel-tsp/blob/master/15_418_Project_Final_Report.pdf).
 
 ## Testing an algorithm
 To test one of the algorithms, first run the make script.
